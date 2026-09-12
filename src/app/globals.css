@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-main: #060e15;
+    --bg-surface: #0a1924;
+    --bg-surface-elevated: #0f2434;
+    --border-subtle: #173245;
+    --border-glow: #00f0ff;
+    --neon-cyan: #00f0ff;
+    --bio-emerald: #10b981;
+    --gold: #f59e0b;
+    --crab-red: #ef4444;
+  }
+
+  body {
+    background-color: #060e15;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image: 
+      radial-gradient(ellipse at top, rgba(0, 240, 255, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at bottom, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+      linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+  }
+}
+
+/* Custom Cyber / Gaming UI Utilities */
+.glow-cyan {
+  box-shadow: 0 0 25px rgba(0, 240, 255, 0.35), inset 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.glow-cyan-sm {
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.4), inset 0 0 15px rgba(16, 185, 129, 0.15);
+}
+
+.glow-gold {
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.45), inset 0 0 20px rgba(245, 158, 11, 0.2);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 15px rgba(0, 240, 255, 0.6);
+}
+
+.text-glow-gold {
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
+}
+
+.cyber-card {
+  background: linear-gradient(135deg, rgba(10, 25, 36, 0.85) 0%, rgba(6, 17, 26, 0.95) 100%);
+  border: 1px solid #173245;
+  backdrop-filter: blur(12px);
+  position: relative;
+}
+
+.cyber-card-active {
+  background: linear-gradient(135deg, rgba(15, 36, 52, 0.95) 0%, rgba(10, 25, 36, 0.98) 100%);
+  border: 1px solid #00f0ff;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.25);
+}
+
+/* Diagonal Cut Tech Corners */
+.tech-corner {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+.tech-corner-sm {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+
+/* Pulsing radar dot */
+@keyframes radar-pulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.6); opacity: 0.2; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.animate-radar {
+  animation: radar-pulse 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+/* Shimmer scanline effect */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(1000%); }
+}
+
+.scanline-effect {
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 240, 255, 0.4), transparent);
+  animation: scanline 6s linear infinite;
+  pointer-events: none;
+}
