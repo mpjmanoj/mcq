@@ -48,3 +48,9 @@ CREATE TABLE IF NOT EXISTS answers (
     is_correct BOOLEAN NOT NULL,
     answered_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Allow public access for live tournament competition
+ALTER TABLE quiz_sessions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE participants DISABLE ROW LEVEL SECURITY;
+ALTER TABLE questions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE answers DISABLE ROW LEVEL SECURITY;
