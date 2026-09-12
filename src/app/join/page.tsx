@@ -13,6 +13,7 @@ import {
   WifiOff,
   Volume2,
   VolumeX,
+  RotateCcw,
 } from "lucide-react";
 import { getApiBaseUrl, getWsUrl } from "@/lib/api";
 import { sounds } from "@/lib/sound";
@@ -93,7 +94,7 @@ export default function ParticipantPage() {
         if (data.quiz_status === "WAITING") {
           setFlowState("WAITING");
         } else if (data.quiz_status === "LIVE") {
-          if (data.status === "COMPLETED") {
+          if (data.status === "COMPLETED" || (data.questions_answered >= (data.total_questions || 20))) {
             setFlowState("COMPLETED");
             setFinalScore(data.score);
           } else {
@@ -107,7 +108,7 @@ export default function ParticipantPage() {
           fetchFinalStanding(pId);
         }
       } else {
-        // If participant not found in backend (e.g. after reset)
+        // If participant not found in backend (e.g. after reset or new session)
         localStorage.removeItem("crab_quiz_pid");
         setParticipantId("");
         setFlowState("REGISTER");
@@ -194,7 +195,7 @@ export default function ParticipantPage() {
               fetchFinalStanding(participantId);
               sounds.playVictory();
             } else if (msg.event === "quiz_reset") {
-              // Reset to new tournament
+              // Reset to new tournament session
               localStorage.removeItem("crab_quiz_pid");
               setParticipantId("");
               setFlowState("REGISTER");
@@ -219,10 +220,10 @@ export default function ParticipantPage() {
 
     // Check waiting state periodically
     const pollInterval = setInterval(() => {
-      if (flowState === "WAITING") {
+      if (flowState === "WAITING" || flowState === "COMPLETED") {
         checkParticipantStatus(participantId);
       }
-    }, 4000);
+    }, 3000);
 
     return () => {
       active = false;
@@ -322,7 +323,7 @@ export default function ParticipantPage() {
 
       if (res.ok) {
         setIsAnswerLocked(true);
-        setFeedbackNotice("Answer locked and submitted to server!");
+        setFeedbackNotice("Answer submitted to server!");
 
         if (data.completed) {
           // Finished all 20 questions
@@ -346,277 +347,274 @@ export default function ParticipantPage() {
     }
   };
 
+  const handleResetForNewSession = () => {
+    localStorage.removeItem("crab_quiz_pid");
+    setParticipantId("");
+    setFlowState("REGISTER");
+    setCurrentQuestion(null);
+    setFinalScore(null);
+    setFinalRank(null);
+  };
+
   const toggleSound = () => {
     const next = sounds.toggleSound();
     setSoundActive(next);
   };
 
   return (
-    <div className="min-h-screen bg-[#060e15] text-slate-100 flex flex-col justify-between max-w-md mx-auto relative px-4 py-5 select-none font-sans">
+    <div className="min-h-screen bg-[#120c06] text-amber-100 flex flex-col justify-between max-w-md mx-auto relative px-4 py-5 select-none font-sans">
       {/* Background scanline effect */}
       <div className="scanline-effect" />
 
       {/* Countdown Overlay */}
       {countdown !== null && (
-        <div className="fixed inset-0 z-50 bg-[#060e15]/95 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-          <div className="text-cyan-400 font-mono tracking-widest text-xs uppercase mb-3 animate-pulse">
-            COMMENCING ARENA MATCH
+        <div className="fixed inset-0 z-50 bg-[#120c06]/95 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
+          <div className="text-amber-400 font-mono tracking-widest text-xs uppercase mb-3 animate-pulse">
+            🦀 COMMENCING TOURNAMENT MATCH
           </div>
-          <div className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-teal-400 to-emerald-400">
+          <div className="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-600">
             {countdown === 0 ? "GO!" : countdown}
           </div>
-          <div className="text-slate-400 text-sm font-medium mt-3">
-            {countdown === 0 ? "BATTLE HAS COMMENCED!" : "GET READY FOR QUESTION 01"}
+          <div className="text-amber-200/80 text-sm font-medium mt-3">
+            {countdown === 0 ? "MATCH HAS BEGUN!" : "GET READY FOR QUESTION 01"}
           </div>
         </div>
       )}
 
-      {/* Top Mobile Game HUD Bar */}
-      <header className="flex items-center justify-between border-b border-cyan-900/50 pb-3 mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="h-8 w-8 rounded-lg bg-cyan-950 border border-cyan-600/50 flex items-center justify-center text-cyan-400">
-            <ShieldCheck className="h-4 w-4" />
+      {/* Header Bar */}
+      <header className="flex items-center justify-between border-b border-amber-900/50 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-amber-950/80 border border-amber-600/70 flex items-center justify-center text-base shadow-sm">
+            🦀
           </div>
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-400">
-              MUD CRAB TOURNAMENT — MIDDLE ANDAMAN
+            <div className="text-[9px] font-mono uppercase tracking-widest text-amber-400">
+              MIDDLE ANDAMAN
             </div>
             <div className="text-xs font-bold text-white tracking-wide">
-              {participantName ? participantName : "COMPETITOR TERMINAL"}
+              Mud Crab Quiz
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <div
-            className={`flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded border ${
-              wsConnected
-                ? "bg-emerald-950 text-emerald-300 border-emerald-700/50"
-                : "bg-amber-950 text-amber-300 border-amber-700/50"
-            }`}
-          >
-            {wsConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-            {wsConnected ? "SYNCED" : "RECONNECT"}
-          </div>
-
+          {/* Sound Mute Toggle */}
           <button
             onClick={toggleSound}
-            className="p-1.5 rounded border border-cyan-900/60 bg-slate-900 text-slate-300 hover:text-cyan-400"
+            className="p-1.5 rounded-lg border border-amber-900/60 bg-[#1c1209] text-amber-300 hover:text-white"
+            title={soundActive ? "Mute Sound" : "Unmute Sound"}
           >
-            {soundActive ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-slate-500" />}
+            {soundActive ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5 text-amber-600" />}
           </button>
+
+          {/* Connection Status */}
+          <div className="flex items-center gap-1 text-[10px] font-mono px-2 py-1 rounded-md bg-[#1c1209] border border-amber-900/60">
+            {wsConnected ? (
+              <>
+                <Wifi className="h-3 w-3 text-emerald-400" />
+                <span className="text-emerald-400">SYNC</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3 w-3 text-amber-500" />
+                <span className="text-amber-400">LIVE</span>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Main Container by Flow State */}
-      <main className="flex-1 flex flex-col justify-center my-auto">
+      {/* Main Dynamic Viewport */}
+      <main className="flex-1 my-auto flex flex-col justify-center py-6">
         {/* ================= STAGE 1: REGISTRATION ================= */}
         {flowState === "REGISTER" && (
-          <div className="cyber-card rounded-2xl p-6 border-cyan-800/60 glow-cyan-sm">
-            <div className="text-center mb-6">
-              <div className="inline-block px-3 py-1 rounded-full bg-cyan-950 border border-cyan-700 text-cyan-300 text-[11px] font-mono tracking-widest uppercase mb-2">
-                PLAYER CHECK-IN
-              </div>
-              <h2 className="text-2xl font-black tracking-tight text-white">
-                ENTER TOURNAMENT
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Enter your real name and 10-digit mobile number to join the live mud crab championship.
-              </p>
+          <div className="crab-card rounded-2xl p-6 border-amber-700/60 shadow-xl text-center animate-in fade-in duration-300">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-950/80 border border-amber-600/60 text-amber-300 font-mono text-[10px] tracking-wider uppercase mb-4">
+              <Sparkles className="h-3 w-3 text-amber-400" /> PLAYER ENTRY PORTAL
             </div>
 
-            {formError && (
-              <div className="mb-4 p-3 rounded-xl bg-red-950/70 border border-red-500/50 text-red-200 text-xs flex items-start gap-2 animate-in fade-in">
-                <AlertCircle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
-                <span>{formError}</span>
-              </div>
-            )}
+            <h2 className="text-2xl font-black text-white tracking-tight">
+              Mud Crab Championship
+            </h2>
+            <p className="text-xs text-amber-200/70 mt-1 max-w-xs mx-auto">
+              Enter your name and mobile number to enter the Middle Andaman quiz arena.
+            </p>
 
-            <form onSubmit={handleJoin} className="space-y-4">
+            <form onSubmit={handleJoin} className="mt-6 space-y-4 text-left">
               <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1.5">
-                  Full Name <span className="text-red-400">*</span>
+                <label className="block text-[11px] font-mono uppercase text-amber-300 mb-1.5 font-bold">
+                  Full Name
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. Rahul Sharma"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-[#071520] border border-cyan-900/80 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-sm transition-all"
-                  maxLength={50}
+                  placeholder="e.g. Manoj, Vasava Sir"
+                  disabled={isSubmittingJoin}
+                  className="w-full px-3.5 py-3 rounded-xl bg-[#1a1108] border border-amber-800/70 text-white placeholder-amber-400/30 text-sm focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
+                  required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1.5">
-                  Mobile Number <span className="text-red-400">*</span>
+                <label className="block text-[11px] font-mono uppercase text-amber-300 mb-1.5 font-bold">
+                  10-Digit Mobile Number
                 </label>
                 <input
                   type="tel"
-                  required
-                  placeholder="10-digit mobile number"
                   value={mobileInput}
                   onChange={(e) => setMobileInput(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-[#071520] border border-cyan-900/80 text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 text-sm font-mono transition-all"
-                  maxLength={15}
+                  placeholder="e.g. 9876543210"
+                  maxLength={10}
+                  disabled={isSubmittingJoin}
+                  className="w-full px-3.5 py-3 rounded-xl bg-[#1a1108] border border-amber-800/70 text-white placeholder-amber-400/30 text-sm font-mono focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all"
+                  required
                 />
-                <span className="text-[11px] text-slate-500 mt-1 block">
-                  Used for tie-breaking identification and session restoration.
-                </span>
               </div>
+
+              {formError && (
+                <div className="p-3 rounded-xl bg-red-950/60 border border-red-800/60 text-red-300 text-xs flex items-center gap-2 animate-in shake">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                  <span>{formError}</span>
+                </div>
+              )}
 
               <button
                 type="submit"
                 disabled={isSubmittingJoin}
-                className="w-full mt-3 py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 active:scale-[0.98] font-bold text-slate-950 tracking-wide text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,240,255,0.3)] transition-all cursor-pointer disabled:opacity-50"
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 active:scale-[0.98] font-black text-slate-950 tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(245,158,11,0.5)] transition-all cursor-pointer disabled:opacity-50"
               >
                 {isSubmittingJoin ? (
-                  <span className="animate-pulse">CONNECTING...</span>
+                  <span>CONNECTING TO ARENA...</span>
                 ) : (
-                  <>
-                    <Send className="h-4 w-4" /> JOIN QUIZ
-                  </>
+                  <span>ENTER TOURNAMENT LOBBY</span>
                 )}
               </button>
             </form>
           </div>
         )}
 
-        {/* ================= STAGE 2: WAITING ROOM ================= */}
+        {/* ================= STAGE 2: WAITING IN LOBBY ================= */}
         {flowState === "WAITING" && (
-          <div className="cyber-card rounded-2xl p-6 border-cyan-800/60 glow-cyan-sm text-center flex flex-col items-center">
-            <div className="relative mb-5">
-              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-800/30 border border-cyan-400/50 flex items-center justify-center text-cyan-300 shadow-[0_0_25px_rgba(0,240,255,0.3)]">
-                <Sparkles className="h-10 w-10 text-cyan-400 animate-spin" />
-              </div>
-              <div className="absolute -inset-1 rounded-2xl bg-cyan-400/20 animate-radar pointer-events-none" />
+          <div className="crab-card rounded-2xl p-6 border-amber-700/60 shadow-xl text-center animate-in fade-in duration-300">
+            <div className="h-16 w-16 rounded-2xl bg-amber-950/80 border border-amber-500/60 flex items-center justify-center text-3xl mx-auto mb-4 shadow-[0_0_20px_rgba(245,158,11,0.3)] animate-pulse">
+              🦀
             </div>
 
-            <div className="inline-block px-3 py-1 rounded-full bg-emerald-950 border border-emerald-600/50 text-emerald-300 font-mono text-[11px] font-bold uppercase tracking-widest mb-3">
-              YOU&apos;RE IN!
+            <div className="inline-block px-3 py-1 rounded-full bg-emerald-950 border border-emerald-600/50 text-emerald-300 font-mono text-[10px] font-bold uppercase tracking-widest mb-3">
+              CONNECTED & VERIFIED
             </div>
 
-            <h2 className="text-2xl font-black text-white tracking-tight">
-              Welcome, {participantName}.
+            <h2 className="text-xl font-black text-white tracking-tight">
+              Welcome, {participantName}!
             </h2>
 
-            <p className="text-sm text-slate-400 max-w-xs mt-2 leading-relaxed">
-              The quiz hasn&apos;t started yet. Please wait for the organizer to begin the competition.
+            <p className="text-xs text-amber-200/70 max-w-xs mx-auto mt-1 leading-relaxed">
+              You are officially registered. The 20 MCQ competition will commence automatically when the organizer presses Start.
             </p>
 
-            {/* Arena Pass Box */}
-            <div className="w-full my-6 p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-left space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-mono">STATUS</span>
-                <span className="font-mono text-cyan-400 font-bold tracking-wider">
-                  WAITING FOR QUIZ TO START
-                </span>
+            <div className="my-6 p-4 rounded-xl bg-[#1c1209] border border-amber-900/60 text-xs font-mono space-y-2 text-left">
+              <div className="flex justify-between items-center">
+                <span className="text-amber-400/70">Phone</span>
+                <span className="text-white font-bold">{participantMobile}</span>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-mono">PLAYER ROSTER</span>
-                <span className="font-mono text-emerald-400 font-bold">
-                  {totalParticipantsJoined} Participants Joined
+              <div className="flex justify-between items-center">
+                <span className="text-amber-400/70">Lobby Status</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
+                  Ready to Battle
                 </span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-mono">TOTAL QUESTIONS</span>
-                <span className="font-mono text-white font-bold">20 MCQ</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-              <span className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-              Automatic transition when the admin starts
+            <div className="text-[11px] font-mono text-amber-300/80 flex items-center justify-center gap-2">
+              <Clock className="h-4 w-4 text-amber-400 animate-spin" />
+              Waiting for organizer kickoff...
             </div>
           </div>
         )}
 
-        {/* ================= STAGE 3: LIVE QUIZ ARENA ================= */}
+        {/* ================= STAGE 3: PLAYING QUESTIONS ================= */}
         {flowState === "PLAYING" && currentQuestion && (
-          <div className="flex flex-col flex-1 justify-between">
-            {/* Header / Progress */}
-            <div className="mb-4">
-              <div className="flex items-center justify-between text-xs font-mono mb-1.5">
-                <span className="text-cyan-400 font-bold tracking-wider">
-                  QUESTION {String(currentQuestion.question_number).padStart(2, "0")} / {currentQuestion.total_questions}
-                </span>
-                <span className="text-slate-400">
-                  {Math.round((currentQuestion.question_number / currentQuestion.total_questions) * 100)}%
-                </span>
-              </div>
+          <div className="space-y-4 animate-in fade-in duration-200">
+            {/* Question Progress Header */}
+            <div className="flex items-center justify-between text-xs font-mono">
+              <span className="text-amber-400 font-bold">
+                QUESTION {currentQuestionNumber.toString().padStart(2, "0")} / 20
+              </span>
+              <span className="text-amber-200/70">{participantName}</span>
+            </div>
 
-              {/* Progress bar */}
-              <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                <div
-                  className="h-full bg-gradient-to-r from-cyan-400 to-emerald-400 transition-all duration-300"
-                  style={{
-                    width: `${(currentQuestion.question_number / currentQuestion.total_questions) * 100}%`,
-                  }}
-                />
-              </div>
+            {/* Progress Bar */}
+            <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-300"
+                style={{ width: `${(currentQuestionNumber / 20) * 100}%` }}
+              />
             </div>
 
             {/* Question Card */}
-            <div className="cyber-card rounded-2xl p-5 border-cyan-900/80 mb-4 shadow-xl">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 px-2 py-0.5 rounded bg-cyan-950 border border-cyan-800/60 inline-block mb-3">
-                AQUACULTURE KNOWLEDGE
-              </span>
-              <h3 className="text-base font-bold text-white leading-relaxed">
+            <div className="crab-card rounded-2xl p-5 border-amber-700/60 shadow-xl">
+              <h3 className="text-base font-bold text-white leading-snug">
                 {currentQuestion.question_text}
               </h3>
             </div>
 
             {/* Options List */}
-            <div className="space-y-2.5 mb-5">
-              {(["A", "B", "C", "D"] as const).map((optKey) => {
-                const optText = currentQuestion[`option_${optKey.toLowerCase()}` as keyof QuestionData];
-                const isSelected = selectedOption === optKey;
+            <div className="space-y-2.5">
+              {[
+                { key: "A", text: currentQuestion.option_a },
+                { key: "B", text: currentQuestion.option_b },
+                { key: "C", text: currentQuestion.option_c },
+                { key: "D", text: currentQuestion.option_d },
+              ].map((opt) => {
+                const isSelected = selectedOption === opt.key;
 
                 return (
                   <button
-                    key={optKey}
-                    type="button"
-                    onClick={() => handleSelectOption(optKey)}
-                    disabled={isAnswerLocked}
-                    className={`w-full p-4 rounded-xl border text-left flex items-start gap-3 transition-all cursor-pointer active:scale-[0.99] ${
+                    key={opt.key}
+                    onClick={() => handleSelectOption(opt.key)}
+                    disabled={isAnswerLocked || isSubmittingAnswer}
+                    className={`w-full p-4 rounded-xl text-left text-sm font-medium transition-all flex items-center justify-between border cursor-pointer ${
                       isSelected
-                        ? "bg-gradient-to-r from-cyan-950 to-teal-950 border-cyan-400 shadow-[0_0_15px_rgba(0,240,255,0.3)]"
-                        : "bg-[#091a26]/90 border-slate-800/90 hover:border-cyan-800 text-slate-200"
-                    } ${isAnswerLocked ? "opacity-75 cursor-not-allowed" : ""}`}
+                        ? "bg-amber-950/90 border-yellow-400 text-yellow-200 shadow-[0_0_20px_rgba(251,191,36,0.35)] scale-[1.01]"
+                        : "bg-[#1c1209] border-amber-900/60 text-amber-100 hover:border-amber-600 hover:bg-[#24170c]"
+                    } disabled:cursor-not-allowed`}
                   >
-                    <span
-                      className={`h-7 w-7 rounded-lg text-xs font-mono font-bold flex items-center justify-center shrink-0 border ${
-                        isSelected
-                          ? "bg-cyan-400 text-black border-cyan-300"
-                          : "bg-slate-900 text-slate-400 border-slate-700"
-                      }`}
-                    >
-                      {optKey}
-                    </span>
-                    <span className={`text-sm font-medium leading-snug pt-0.5 ${isSelected ? "text-white font-semibold" : "text-slate-200"}`}>
-                      {optText}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`h-7 w-7 rounded-lg font-mono font-bold text-xs flex items-center justify-center border shrink-0 ${
+                          isSelected
+                            ? "bg-yellow-400 text-slate-950 border-yellow-300"
+                            : "bg-amber-950 text-amber-400 border-amber-700"
+                        }`}
+                      >
+                        {opt.key}
+                      </span>
+                      <span>{opt.text}</span>
+                    </div>
+
+                    {isSelected && <CheckCircle className="h-5 w-5 text-yellow-400 shrink-0 ml-2" />}
                   </button>
                 );
               })}
             </div>
 
-            {/* Submission Status Notice */}
+            {/* Feedback & Notice */}
             {feedbackNotice && (
-              <div className="mb-3 text-center text-xs font-mono text-emerald-400 animate-in fade-in">
+              <div className="p-3 rounded-xl bg-amber-950/80 border border-amber-600/70 text-amber-200 text-xs text-center font-mono animate-in fade-in">
                 {feedbackNotice}
               </div>
             )}
 
-            {/* Lock & Submit Button */}
+            {/* Submit Answer Button */}
             <button
               onClick={handleSubmitAnswer}
               disabled={!selectedOption || isAnswerLocked || isSubmittingAnswer}
-              className="w-full py-4 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 active:scale-[0.98] font-bold text-slate-950 tracking-wider text-sm flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(0,240,255,0.35)] transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none disabled:shadow-none"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 active:scale-[0.98] font-black text-slate-950 tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(245,158,11,0.5)] transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
             >
               {isSubmittingAnswer ? (
-                <span className="animate-pulse">LOCKING IN...</span>
+                <span className="animate-pulse">LOCKING IN ANSWER...</span>
               ) : isAnswerLocked ? (
                 <span className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4" /> ANSWER RECORDED
@@ -630,79 +628,79 @@ export default function ParticipantPage() {
           </div>
         )}
 
-        {/* ================= STAGE 4: QUIZ COMPLETED ================= */}
+        {/* ================= STAGE 4: ALL QUESTIONS COMPLETED ================= */}
         {flowState === "COMPLETED" && (
-          <div className="cyber-card rounded-2xl p-6 border-cyan-800/60 glow-cyan-sm text-center flex flex-col items-center">
+          <div className="crab-card rounded-2xl p-6 border-amber-700/60 shadow-xl text-center flex flex-col items-center animate-in zoom-in duration-300">
             <div className="h-20 w-20 rounded-2xl bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 mb-4 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
               <CheckCircle className="h-10 w-10 text-emerald-400" />
             </div>
 
             <div className="inline-block px-3 py-1 rounded-full bg-emerald-950 border border-emerald-600/50 text-emerald-300 font-mono text-[11px] font-bold uppercase tracking-widest mb-3">
-              MISSION COMPLETED
+              ALL 20 QUESTIONS COMPLETED
             </div>
 
             <h2 className="text-2xl font-black text-white tracking-tight">
-              QUIZ COMPLETED
+              Great Job, {participantName}!
             </h2>
 
-            <p className="text-sm text-slate-400 max-w-xs mt-2 leading-relaxed">
-              You have successfully submitted all 20 answers. Your responses and timestamps have been recorded.
+            <p className="text-xs text-amber-200/70 max-w-xs mt-2 leading-relaxed">
+              You have completed all 20 questions. Your responses and finish timestamps are securely locked into the tournament database.
             </p>
 
-            <div className="w-full my-6 p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-left space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-mono">COMPETITOR</span>
-                <span className="font-mono text-white font-bold">{participantName}</span>
+            <div className="w-full my-6 p-4 rounded-xl bg-[#1c1209] border border-amber-900/60 text-left space-y-2 text-xs font-mono">
+              <div className="flex justify-between items-center">
+                <span className="text-amber-400/70">Competitor</span>
+                <span className="text-white font-bold">{participantName}</span>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-mono">QUESTIONS ANSWERED</span>
-                <span className="font-mono text-emerald-400 font-bold">20 / 20</span>
+              <div className="flex justify-between items-center">
+                <span className="text-amber-400/70">Questions Answered</span>
+                <span className="text-emerald-400 font-bold">20 / 20 Complete</span>
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-slate-400 font-mono">STATUS</span>
-                <span className="font-mono text-cyan-400 font-bold">LOCKED & RECORDED</span>
+              <div className="flex justify-between items-center">
+                <span className="text-amber-400/70">Score Achieved</span>
+                <span className="text-yellow-400 font-bold">{finalScore !== null ? `${finalScore} / 20` : "Recorded"}</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-              <Clock className="h-4 w-4 text-cyan-400 animate-spin" />
-              Awaiting organizer to conclude competition and reveal final championship rankings...
+            <div className="flex items-center gap-2 text-xs font-mono text-amber-300/80">
+              <Clock className="h-4 w-4 text-amber-400 animate-spin" />
+              Waiting for remaining participants to finish before revealing final standings...
             </div>
           </div>
         )}
 
         {/* ================= STAGE 5: FINAL RESULTS ================= */}
         {flowState === "RESULTS" && (
-          <div className="cyber-card rounded-2xl p-6 border-amber-500/50 glow-gold text-center flex flex-col items-center">
-            <div className="h-20 w-20 rounded-2xl bg-amber-950/80 border border-amber-500 flex items-center justify-center text-amber-400 mb-4 shadow-[0_0_35px_rgba(245,158,11,0.5)]">
-              <Trophy className="h-10 w-10 text-amber-400 animate-bounce" />
+          <div className="crab-card rounded-2xl p-6 border-amber-500 shadow-2xl text-center flex flex-col items-center animate-in zoom-in duration-300">
+            <div className="h-20 w-20 rounded-2xl bg-gradient-to-tr from-amber-600 to-yellow-400 border border-yellow-200 flex items-center justify-center text-slate-950 mb-4 shadow-[0_0_35px_rgba(245,158,11,0.5)] animate-bounce">
+              <Trophy className="h-10 w-10 text-slate-950" />
             </div>
 
-            <div className="inline-block px-3 py-1 rounded-full bg-amber-950 border border-amber-600/50 text-amber-300 font-mono text-[11px] font-bold uppercase tracking-widest mb-3">
-              OFFICIAL RESULTS
+            <div className="inline-block px-3 py-1 rounded-full bg-amber-950 border border-amber-600 text-amber-300 font-mono text-[11px] font-bold uppercase tracking-widest mb-3">
+              OFFICIAL TOURNAMENT RESULTS
             </div>
 
-            <h2 className="text-3xl font-black text-white tracking-tight">
+            <h2 className="text-2xl font-black text-white tracking-tight">
               {finalRank === 1
-                ? "CHAMPION!"
+                ? "👑 1ST PLACE CHAMPION!"
                 : finalRank === 2
-                ? "2ND PLACE!"
+                ? "🥈 2ND PLACE SILVER!"
                 : finalRank === 3
-                ? "3RD PLACE!"
+                ? "🥉 3RD PLACE BRONZE!"
                 : "WELL PLAYED!"}
             </h2>
 
-            <div className="my-6 p-5 rounded-2xl bg-slate-900/90 border border-amber-900/50 w-full space-y-4">
+            <div className="my-6 p-5 rounded-2xl bg-[#1c1209] border border-amber-900/60 w-full space-y-4">
               <div>
-                <div className="text-[11px] font-mono text-slate-400 uppercase">Your Final Score</div>
-                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-200 font-mono">
+                <div className="text-[11px] font-mono text-amber-400/70 uppercase">Your Final Score</div>
+                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-400 font-mono">
                   {finalScore !== null ? `${finalScore} / 20` : "—"}
                 </div>
               </div>
 
               {finalRank && (
-                <div className="border-t border-slate-800 pt-3">
-                  <div className="text-[11px] font-mono text-slate-400 uppercase">Official Standing</div>
+                <div className="border-t border-amber-900/60 pt-3">
+                  <div className="text-[11px] font-mono text-amber-400/70 uppercase">Official Standing</div>
                   <div className="text-2xl font-black text-white font-mono">
                     Rank #{finalRank}
                   </div>
@@ -710,17 +708,20 @@ export default function ParticipantPage() {
               )}
             </div>
 
-            <p className="text-xs text-slate-400 font-mono">
-              Look at the main arena screen for the complete championship ceremony!
-            </p>
+            <button
+              onClick={handleResetForNewSession}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-yellow-400 font-bold text-slate-950 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+            >
+              <RotateCcw className="h-4 w-4" /> Ready for Next Round / Session
+            </button>
           </div>
         )}
       </main>
 
       {/* Footer System Status Bar */}
-      <footer className="border-t border-cyan-900/40 pt-3 flex items-center justify-between text-[10px] font-mono text-slate-500">
-        <span>MUD CRAB QUIZ ARENA</span>
-        <span>SERVER VALIDATED SECURE</span>
+      <footer className="border-t border-amber-900/40 pt-3 flex items-center justify-between text-[10px] font-mono text-amber-400/60">
+        <span>🦀 MUD CRAB AQUACULTURE CHAMPIONSHIP</span>
+        <span>MIDDLE ANDAMAN</span>
       </footer>
     </div>
   );

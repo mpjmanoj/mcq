@@ -447,6 +447,22 @@ async def submit_answer(req: AnswerRequest, db: Session = Depends(get_db)):
                 "total_time": format_time_seconds(participant.total_time_seconds),
             },
         )
+        # Auto-conclude quiz when ALL participants have finished
+        all_participants = db.query(Participant).filter(Participant.session_id == session.id).all()
+        if all_participants and all(p.status == "COMPLETED" or p.questions_answered >= session.total_questions for p in all_participants):
+            session.status = "COMPLETED"
+            session.completed_at = now
+            db.commit()
+            top3 = lb[:3]
+            await ws_manager.broadcast_all(
+                "quiz_completed",
+                {
+                    "session_id": session.id,
+                    "completed_at": now.isoformat(),
+                    "top3": top3,
+                    "leaderboard": lb,
+                },
+            )
 
     next_q = participant.questions_answered + 1
     return {

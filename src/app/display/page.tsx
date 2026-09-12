@@ -72,10 +72,10 @@ export default function MainDisplayPage() {
 
   const triggerConfetti = useCallback(() => {
     confetti({
-      particleCount: 120,
-      spread: 80,
+      particleCount: 150,
+      spread: 90,
       origin: { y: 0.6 },
-      colors: ["#00f0ff", "#10b981", "#f59e0b", "#ffffff"],
+      colors: ["#fbbf24", "#f59e0b", "#d97706", "#fef3c7"],
     });
   }, []);
 
@@ -93,13 +93,13 @@ export default function MainDisplayPage() {
         const resPart = await fetch(`${api}/api/participants`);
         if (resPart.ok) {
           const data = await resPart.json();
-          setParticipants(data.participants);
+          setParticipants(data.participants || []);
         }
       } else {
         const resLb = await fetch(`${api}/api/quiz/leaderboard`);
         if (resLb.ok) {
           const data = await resLb.json();
-          setLeaderboard(data.leaderboard);
+          setLeaderboard(data.leaderboard || []);
         }
       }
     } catch {
@@ -135,12 +135,12 @@ export default function MainDisplayPage() {
                 setLeaderboard(msg.data.leaderboard);
               }
             } else if (msg.event === "participant_joined") {
-              setParticipants(msg.data.participants);
+              setParticipants(msg.data.participants || []);
               setNewJoiner(msg.data.name);
               sounds.playJoin();
               setTimeout(() => setNewJoiner(null), 4000);
             } else if (msg.event === "participant_removed") {
-              setParticipants(msg.data.participants);
+              setParticipants(msg.data.participants || []);
             } else if (msg.event === "quiz_started") {
               // Trigger 3-2-1 Countdown
               setCountdown(3);
@@ -160,7 +160,7 @@ export default function MainDisplayPage() {
                 setTimeout(() => setCountdown(null), 1000);
               }, 3000);
             } else if (msg.event === "leaderboard_updated") {
-              setLeaderboard(msg.data.leaderboard);
+              setLeaderboard(msg.data.leaderboard || []);
               if (msg.data.last_activity) {
                 const act = {
                   ...msg.data.last_activity,
@@ -172,7 +172,7 @@ export default function MainDisplayPage() {
               refreshState();
             } else if (msg.event === "quiz_completed") {
               setStatus("COMPLETED");
-              setLeaderboard(msg.data.leaderboard);
+              setLeaderboard(msg.data.leaderboard || []);
               triggerConfetti();
               sounds.playVictory();
               // Step through podium reveal
@@ -206,7 +206,7 @@ export default function MainDisplayPage() {
     refreshState();
 
     // Fallback polling interval
-    const interval = setInterval(refreshState, 3500);
+    const interval = setInterval(refreshState, 3000);
 
     return () => {
       active = false;
@@ -225,43 +225,43 @@ export default function MainDisplayPage() {
   const top3 = leaderboard[2];
 
   return (
-    <div className="relative min-h-screen bg-[#060e15] text-slate-100 flex flex-col justify-between p-6 lg:p-10 select-none overflow-hidden">
+    <div className="relative min-h-screen bg-[#120c06] text-amber-100 flex flex-col justify-between p-6 lg:p-10 select-none overflow-hidden font-sans">
       {/* Background Animated Scanlines & Grid */}
       <div className="scanline-effect" />
 
       {/* Countdown Overlay */}
       {countdown !== null && (
-        <div className="fixed inset-0 z-50 bg-[#060e15]/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
-          <div className="text-cyan-400 text-sm tracking-[0.3em] font-mono uppercase mb-4 animate-pulse">
-            BATTLE ARENA ENGAGING
+        <div className="fixed inset-0 z-50 bg-[#120c06]/95 backdrop-blur-xl flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="text-amber-400 text-sm tracking-[0.3em] font-mono uppercase mb-4 animate-pulse">
+            🦀 TOURNAMENT ARENA ENGAGING
           </div>
-          <div className="text-[12rem] md:text-[18rem] font-black text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 via-teal-400 to-emerald-500 scale-105 transition-transform duration-300">
+          <div className="text-[12rem] md:text-[18rem] font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-600 scale-105 transition-transform duration-300">
             {countdown === 0 ? "GO!" : countdown}
           </div>
-          <p className="text-xl text-slate-400 tracking-wider font-medium mt-2">
-            {countdown === 0 ? "CHAMPIONSHIP HAS BEGUN!" : "PREPARE YOUR TERMINALS"}
+          <p className="text-xl text-amber-200/80 tracking-wider font-medium mt-2">
+            {countdown === 0 ? "MATCH HAS COMMENCED!" : "PREPARE FOR QUESTION 01"}
           </p>
         </div>
       )}
 
       {/* Header Banner */}
-      <header className="relative z-10 flex items-center justify-between border-b border-cyan-900/50 pb-5">
+      <header className="relative z-10 flex items-center justify-between border-b border-amber-900/50 pb-5">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-teal-900/40 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.25)]">
-            <Trophy className="h-6 w-6" />
+          <div className="h-12 w-12 rounded-2xl bg-amber-950/80 border border-amber-600/60 flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(245,158,11,0.35)]">
+            🦀
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <span className="text-[11px] font-mono uppercase tracking-[0.25em] px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800/60">
-                MIDDLE ANDAMAN AQUACULTURE CHAMPIONSHIP
+              <span className="text-[11px] font-mono uppercase tracking-[0.25em] px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-700 font-bold">
+                MIDDLE ANDAMAN AQUACULTURE
               </span>
-              <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+              <div className="flex items-center gap-1.5 text-xs text-amber-400/80 font-mono">
                 <span className={`inline-block h-2 w-2 rounded-full ${wsConnected ? "bg-emerald-400 animate-pulse" : "bg-emerald-400"}`} />
-                <span>LIVE FEED</span>
+                <span>ARENA SYNC</span>
               </div>
             </div>
             <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white mt-1">
-              MUD CRAB FARMING QUIZ COMPETITION — MIDDLE ANDAMAN
+              MUD CRAB FARMING QUIZ COMPETITION
             </h1>
           </div>
         </div>
@@ -269,12 +269,12 @@ export default function MainDisplayPage() {
         <div className="flex items-center gap-3">
           {/* Status Badge */}
           <div
-            className={`px-4 py-1.5 rounded-lg border font-mono text-sm tracking-wider uppercase font-bold flex items-center gap-2 ${
+            className={`px-4 py-1.5 rounded-xl border font-mono text-sm tracking-wider uppercase font-bold flex items-center gap-2 ${
               status === "LIVE"
-                ? "bg-red-950/60 border-red-500/50 text-red-400 glow-cyan-sm"
+                ? "bg-red-950/80 border-red-500/80 text-red-300 shadow-[0_0_20px_rgba(239,68,68,0.4)]"
                 : status === "COMPLETED"
-                ? "bg-amber-950/60 border-amber-500/50 text-amber-300 glow-gold"
-                : "bg-cyan-950/60 border-cyan-500/50 text-cyan-400"
+                ? "bg-amber-950/90 border-yellow-400 text-yellow-300 shadow-[0_0_25px_rgba(251,191,36,0.4)]"
+                : "bg-amber-950/80 border-amber-600/60 text-amber-300"
             }`}
           >
             <Radio className={`h-4 w-4 ${status === "LIVE" ? "animate-spin text-red-400" : ""}`} />
@@ -284,10 +284,10 @@ export default function MainDisplayPage() {
           {/* Sound Toggle */}
           <button
             onClick={toggleAudio}
-            className="p-2.5 rounded-lg border border-cyan-900/60 bg-slate-900/60 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 transition-colors"
+            className="p-2.5 rounded-xl border border-amber-900/60 bg-[#1c1209] hover:bg-[#291b0e] text-amber-300 hover:text-white transition-colors"
             title={soundActive ? "Mute Audio" : "Unmute Audio"}
           >
-            {soundActive ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-slate-500" />}
+            {soundActive ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-amber-600" />}
           </button>
         </div>
       </header>
@@ -299,201 +299,167 @@ export default function MainDisplayPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center max-w-7xl mx-auto w-full">
             {/* Left QR Center (5 cols) */}
             <div className="lg:col-span-5 flex flex-col items-center text-center">
-              <div className="relative p-6 rounded-3xl bg-gradient-to-b from-[#0c2233] to-[#081722] border-2 border-cyan-500/40 glow-cyan">
+              <div className="relative p-6 rounded-3xl bg-[#1c1209] border-2 border-amber-500/60 shadow-[0_0_35px_rgba(245,158,11,0.3)]">
                 {/* QR Code */}
-                <div className="p-4 bg-white rounded-2xl shadow-2xl flex items-center justify-center">
+                <div className="p-4 bg-white rounded-2xl shadow-2xl flex items-center justify-center border-4 border-amber-500">
                   {joinUrl ? (
                     <QRCodeSVG
                       value={joinUrl}
                       size={260}
                       level="H"
                       includeMargin={false}
-                      fgColor="#05101a"
+                      fgColor="#120c06"
                     />
                   ) : (
-                    <div className="w-[260px] h-[260px] bg-slate-200 animate-pulse rounded" />
+                    <div className="w-[260px] h-[260px] bg-amber-200 animate-pulse rounded" />
                   )}
                 </div>
 
                 <div className="mt-5 space-y-1">
-                  <div className="inline-block px-3 py-1 rounded-full bg-cyan-900/50 border border-cyan-500/40 text-cyan-300 text-xs font-mono tracking-widest uppercase">
-                    SCAN TO JOIN
+                  <div className="inline-block px-3 py-1 rounded-full bg-amber-950 border border-amber-500 text-yellow-300 text-xs font-mono tracking-widest uppercase font-bold">
+                    SCAN TO JOIN COMPETITION
                   </div>
-                  <p className="text-xs text-slate-400 font-mono tracking-wider pt-1">
-                    SCAN • ENTER YOUR DETAILS • JOIN THE ARENA
+                  <p className="text-xs text-amber-200/80 font-mono tracking-wider pt-1">
+                    POINT PHONE CAMERA • ENTER NAME • ENTER LOBBY
                   </p>
                 </div>
               </div>
 
               {/* URL fallback */}
-              <div className="mt-4 text-xs font-mono text-cyan-400/80 bg-slate-900/80 px-4 py-1.5 rounded-lg border border-cyan-900/40">
-                Direct URL: <span className="text-white font-semibold">{joinUrl}</span>
+              <div className="mt-4 text-xs font-mono text-amber-400 bg-[#1c1209] px-4 py-2 rounded-xl border border-amber-900/60">
+                Direct URL: <span className="text-white font-bold">{joinUrl}</span>
               </div>
             </div>
 
             {/* Right Participant Grid (7 cols) */}
-            <div className="lg:col-span-7 flex flex-col h-[520px] rounded-2xl bg-[#091a26]/90 border border-cyan-900/60 p-6 backdrop-blur-md">
-              <div className="flex items-center justify-between border-b border-cyan-900/40 pb-4 mb-4">
+            <div className="lg:col-span-7 flex flex-col h-[520px] rounded-2xl bg-[#1c1209]/90 border border-amber-800/60 p-6 backdrop-blur-md shadow-xl">
+              <div className="flex items-center justify-between border-b border-amber-900/50 pb-4 mb-4">
                 <div className="flex items-center gap-2.5">
-                  <Users className="h-5 w-5 text-cyan-400" />
+                  <Users className="h-5 w-5 text-amber-400" />
                   <span className="text-lg font-bold text-white tracking-wide">
-                    CHAMPIONSHIP LOBBY
+                    CHAMPIONSHIP LOBBY ROSTER
                   </span>
                 </div>
-                <div className="px-3.5 py-1 rounded-full bg-cyan-950 border border-cyan-600/50 text-cyan-300 font-mono text-sm font-semibold">
-                  Participants Joined: <span className="text-white text-base font-black">{participants.length}</span>
+                <div className="px-3.5 py-1 rounded-full bg-amber-950 border border-amber-600/60 text-amber-300 font-mono text-sm font-semibold">
+                  Competitors: <span className="text-yellow-300 text-base font-black">{participants.length}</span>
                 </div>
               </div>
 
               {/* Toast for New Player */}
               {newJoiner && (
-                <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-cyan-950 to-teal-950 border border-cyan-400/60 text-cyan-200 flex items-center justify-between animate-in slide-in-from-top-3 duration-300">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-cyan-400 animate-spin" />
-                    <span className="text-xs font-mono uppercase tracking-wider text-cyan-400">NEW FIGHTER JOINED:</span>
-                    <strong className="text-white text-sm">{newJoiner}</strong>
+                <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-950 to-yellow-950 border border-amber-500 text-amber-200 flex items-center justify-between animate-in slide-in-from-top-3 duration-300">
+                  <div className="flex items-center gap-2 text-sm font-bold font-mono">
+                    <Sparkles className="h-4 w-4 text-amber-400" />
+                    <span>{newJoiner} just joined the match!</span>
                   </div>
-                  <span className="text-[11px] font-mono text-cyan-300/80">Ready to play</span>
+                  <span className="text-xs font-mono text-amber-400">READY</span>
                 </div>
               )}
 
-              {/* Roster Badges */}
-              {participants.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                  <div className="h-16 w-16 rounded-full bg-cyan-950/40 border border-cyan-800/40 flex items-center justify-center text-cyan-500 mb-3 animate-pulse">
-                    <Users className="h-8 w-8" />
+              {/* Joined Players Grid */}
+              <div className="flex-1 overflow-y-auto pr-2">
+                {participants.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-amber-400/50 font-mono">
+                    <Users className="h-12 w-12 text-amber-600/40 mb-3 animate-pulse" />
+                    <div className="text-base font-bold text-amber-300">AWAITING FIRST PARTICIPANT</div>
+                    <div className="text-xs text-amber-400/60 mt-1 max-w-xs">
+                      Scan the QR code on the left with any mobile device to enter the tournament.
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-300">Awaiting Competitors...</h3>
-                  <p className="text-sm text-slate-500 max-w-sm mt-1">
-                    Scan the QR code with your smartphone camera to register and enter the waiting arena.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-2 md:grid-cols-3 gap-2.5 content-start">
-                  {participants.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/50 transition-all hover:bg-slate-800/80 group"
-                    >
-                      <span className="h-6 w-6 rounded-md bg-cyan-950 text-cyan-400 text-xs font-mono font-bold flex items-center justify-center border border-cyan-800/50">
-                        {idx + 1}
-                      </span>
-                      <div className="truncate">
-                        <div className="text-sm font-bold text-slate-200 group-hover:text-cyan-300 truncate">
-                          {p.name}
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {participants.map((p, idx) => (
+                      <div
+                        key={p.id}
+                        className="p-3.5 rounded-xl bg-[#25170d] border border-amber-800/60 hover:border-amber-500 transition-all flex items-center gap-3 animate-in zoom-in-95 duration-200 shadow-md"
+                      >
+                        <div className="h-9 w-9 rounded-xl bg-amber-950 border border-amber-600/60 flex items-center justify-center font-mono font-black text-amber-400 text-xs shrink-0">
+                          #{idx + 1}
                         </div>
-                        <div className="text-[11px] font-mono text-slate-500">
-                          {p.mobile}
+                        <div className="truncate">
+                          <div className="font-bold text-white text-sm truncate">{p.name}</div>
+                          <div className="text-[10px] font-mono text-amber-400/70 truncate">{p.mobile}</div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
 
-              <div className="border-t border-cyan-900/40 pt-3 mt-3 flex items-center justify-between text-xs text-slate-400 font-mono">
-                <span className="flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-                  Synchronous Real-Time WebSocket Channel
-                </span>
-                <span>Admin will start the quiz shortly</span>
+              <div className="mt-4 pt-3 border-t border-amber-900/50 text-xs font-mono text-amber-400/70 flex items-center justify-between">
+                <span>Auto-refreshes in real-time</span>
+                <span>Ready for match kickoff</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* ================= STAGE 2: LIVE QUIZ LEADERBOARD ================= */}
+        {/* ================= STAGE 2: LIVE COMPETITION MATCH ================= */}
         {status === "LIVE" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl mx-auto w-full">
-            {/* Live Standings Table (8 cols) */}
-            <div className="lg:col-span-8 rounded-2xl bg-[#091a26]/90 border border-cyan-900/60 p-6 flex flex-col h-[560px] backdrop-blur-md">
-              <div className="flex items-center justify-between border-b border-cyan-900/40 pb-4 mb-4">
-                <div className="flex items-center gap-2.5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto w-full h-[600px]">
+            {/* Left: Live Leaderboard (8 cols) */}
+            <div className="lg:col-span-8 flex flex-col h-full rounded-2xl bg-[#1c1209]/90 border border-amber-800/60 p-6 backdrop-blur-md shadow-2xl">
+              <div className="flex items-center justify-between border-b border-amber-900/50 pb-4 mb-4">
+                <div className="flex items-center gap-3">
                   <Trophy className="h-6 w-6 text-amber-400 animate-pulse" />
-                  <span className="text-xl font-black text-white tracking-wide">
-                    LIVE LEADERBOARD
-                  </span>
+                  <h2 className="text-xl font-black text-white tracking-wide">
+                    REAL-TIME LEADERBOARD
+                  </h2>
                 </div>
-                <span className="text-xs font-mono text-cyan-300 bg-cyan-950 px-3 py-1 rounded-md border border-cyan-700/50">
-                  REAL-TIME TIE-BREAKER ACTIVE
-                </span>
+                <div className="text-xs font-mono text-amber-400/80">
+                  Ranking: Score (High) • Response Time (Fast)
+                </div>
               </div>
 
-              {/* Table */}
-              <div className="flex-1 overflow-y-auto pr-1">
-                <table className="w-full text-left">
+              <div className="flex-1 overflow-y-auto pr-2">
+                <table className="w-full text-left text-sm font-mono">
                   <thead>
-                    <tr className="border-b border-cyan-900/50 text-[11px] font-mono uppercase text-slate-400">
+                    <tr className="border-b border-amber-900/50 text-[11px] uppercase text-amber-400/70">
                       <th className="py-2.5 px-3">Rank</th>
                       <th className="py-2.5 px-3">Competitor</th>
+                      <th className="py-2.5 px-3 text-center">Score</th>
                       <th className="py-2.5 px-3 text-center">Progress</th>
-                      <th className="py-2.5 px-3 text-right">Score</th>
+                      <th className="py-2.5 px-3 text-right">Time</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-medium">
-                    {leaderboard.map((item) => {
-                      const isTop1 = item.rank === 1;
-                      const isTop2 = item.rank === 2;
-                      const isTop3 = item.rank === 3;
-
+                  <tbody className="divide-y divide-amber-950/70">
+                    {leaderboard.map((p) => {
+                      const isPodium = p.rank <= 3;
                       return (
                         <tr
-                          key={item.id}
-                          className={`hover:bg-cyan-950/30 transition-colors ${
-                            isTop1
-                              ? "bg-amber-500/10"
-                              : isTop2
-                              ? "bg-slate-300/5"
-                              : isTop3
-                              ? "bg-amber-800/10"
-                              : ""
+                          key={p.id}
+                          className={`transition-colors ${
+                            p.rank === 1
+                              ? "bg-amber-950/40 text-yellow-300 font-bold"
+                              : p.rank === 2
+                              ? "bg-slate-900/40 text-slate-200"
+                              : p.rank === 3
+                              ? "bg-amber-950/20 text-amber-400"
+                              : "hover:bg-[#25170d]"
                           }`}
                         >
-                          <td className="py-3 px-3">
+                          <td className="py-3.5 px-3 font-black text-base flex items-center gap-2">
+                            {p.rank === 1 ? "🥇 #1" : p.rank === 2 ? "🥈 #2" : p.rank === 3 ? "🥉 #3" : `#${p.rank}`}
+                          </td>
+                          <td className="py-3.5 px-3 font-sans font-bold text-white text-base">
+                            {p.name}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-bold text-yellow-400 text-lg">
+                            {p.score}
+                          </td>
+                          <td className="py-3.5 px-3 text-center text-xs">
                             <span
-                              className={`inline-flex items-center justify-center h-7 w-7 rounded-lg text-xs font-mono font-bold ${
-                                isTop1
-                                  ? "bg-amber-500 text-black shadow-[0_0_15px_rgba(245,158,11,0.6)]"
-                                  : isTop2
-                                  ? "bg-slate-300 text-black shadow-[0_0_12px_rgba(226,232,240,0.5)]"
-                                  : isTop3
-                                  ? "bg-amber-700 text-white shadow-[0_0_12px_rgba(180,83,9,0.5)]"
-                                  : "bg-slate-800 text-slate-400"
+                              className={`px-2 py-0.5 rounded-full ${
+                                p.completed || p.questions_answered >= 20
+                                  ? "bg-emerald-950 text-emerald-300 border border-emerald-600"
+                                  : "bg-amber-950 text-amber-400 border border-amber-800"
                               }`}
                             >
-                              {item.rank}
+                              {p.completed || p.questions_answered >= 20 ? "DONE (20/20)" : `${p.questions_answered}/20`}
                             </span>
                           </td>
-                          <td className="py-3 px-3">
-                            <div className="font-bold text-white text-base flex items-center gap-2">
-                              {item.name}
-                              {item.completed && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-600/50">
-                                  <CheckCircle2 className="h-3 w-3" /> Done ({item.formatted_time})
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs font-mono text-slate-500">{item.mobile}</div>
-                          </td>
-                          <td className="py-3 px-3">
-                            <div className="w-36 mx-auto">
-                              <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
-                                <span>{item.questions_answered}/20</span>
-                                <span>{Math.round((item.questions_answered / 20) * 100)}%</span>
-                              </div>
-                              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                                <div
-                                  className="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 transition-all duration-500"
-                                  style={{ width: `${(item.questions_answered / 20) * 100}%` }}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <span className="text-xl font-black text-cyan-300 font-mono">
-                              {item.score}
-                            </span>
-                            <span className="text-xs text-slate-500 font-mono"> / 20</span>
+                          <td className="py-3.5 px-3 text-right text-slate-400 text-xs">
+                            {p.formatted_time}
                           </td>
                         </tr>
                       );
@@ -503,185 +469,109 @@ export default function MainDisplayPage() {
               </div>
             </div>
 
-            {/* Live Activity Feed & Stats (4 cols) */}
-            <div className="lg:col-span-4 flex flex-col gap-6">
-              {/* Competition Stats Box */}
-              <div className="p-5 rounded-2xl bg-[#091a26]/90 border border-cyan-900/60 backdrop-blur-md">
-                <h3 className="text-xs font-mono uppercase tracking-wider text-cyan-400 mb-3 flex items-center gap-2">
-                  <Timer className="h-4 w-4" /> BATTLE TELEMETRY
-                </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-                    <div className="text-2xl font-black text-white font-mono">{leaderboard.length}</div>
-                    <div className="text-[11px] text-slate-400 uppercase font-mono">Competitors</div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-center">
-                    <div className="text-2xl font-black text-emerald-400 font-mono">
-                      {leaderboard.filter((i) => i.completed).length}
-                    </div>
-                    <div className="text-[11px] text-slate-400 uppercase font-mono">Finished</div>
-                  </div>
-                </div>
+            {/* Right: Live Activity Ticker & Info (4 cols) */}
+            <div className="lg:col-span-4 flex flex-col h-full rounded-2xl bg-[#1c1209]/90 border border-amber-800/60 p-6 backdrop-blur-md shadow-2xl">
+              <div className="flex items-center gap-2.5 border-b border-amber-900/50 pb-4 mb-4">
+                <Radio className="h-5 w-5 text-amber-400 animate-pulse" />
+                <h3 className="text-base font-bold text-white">LIVE ACTIVITY FEED</h3>
               </div>
 
-              {/* Live Ticker */}
-              <div className="flex-1 p-5 rounded-2xl bg-[#091a26]/90 border border-cyan-900/60 flex flex-col backdrop-blur-md">
-                <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-cyan-400 mb-3">
-                  <Radio className="h-4 w-4 text-cyan-400 animate-pulse" /> LIVE SUBMISSION FEED
-                </div>
-
-                <div className="flex-1 overflow-hidden space-y-2">
-                  {recentActivity.length === 0 ? (
-                    <div className="h-full flex items-center justify-center text-xs text-slate-500 font-mono text-center">
-                      Answers will stream here live as players submit...
-                    </div>
-                  ) : (
-                    recentActivity.map((act, idx) => (
-                      <div
-                        key={idx}
-                        className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 text-xs flex items-center justify-between"
-                      >
-                        <div className="truncate">
-                          <span className="font-bold text-slate-200">{act.name}</span>
-                          <span className="text-slate-500 ml-1.5 font-mono">
-                            {act.completed ? "completed all 20!" : `answered Q${act.question}`}
-                          </span>
-                        </div>
-                        <span className="text-cyan-400 font-mono font-bold ml-2">
-                          {act.score} pts
-                        </span>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {recentActivity.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-amber-400/50 text-xs font-mono">
+                    <Timer className="h-8 w-8 text-amber-600/40 mb-2 animate-spin" />
+                    Waiting for answers to stream in...
+                  </div>
+                ) : (
+                  recentActivity.map((act, i) => (
+                    <div
+                      key={i}
+                      className="p-3 rounded-xl bg-[#24170d] border border-amber-900/60 flex items-center justify-between text-xs font-mono animate-in slide-in-from-top-2"
+                    >
+                      <div>
+                        <div className="font-bold text-white">{act.name}</div>
+                        <div className="text-[11px] text-amber-400/80">Question {act.question} submitted</div>
                       </div>
-                    ))
-                  )}
-                </div>
+                      <div className="text-right">
+                        <div className="text-yellow-400 font-bold">{act.score} pts</div>
+                        <div className="text-[10px] text-slate-500">{act.timestamp}</div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
         )}
 
-        {/* ================= STAGE 3: GRAND WINNER CEREMONY ================= */}
+        {/* ================= STAGE 3: OLYMPIC PODIUM RESULTS ================= */}
         {status === "COMPLETED" && (
-          <div className="max-w-6xl mx-auto w-full flex flex-col items-center">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-950/80 border border-amber-500/50 text-amber-300 font-mono text-xs uppercase tracking-widest mb-3">
-                <Crown className="h-4 w-4 text-amber-400" /> CEREMONY COMPLETE
+          <div className="max-w-6xl mx-auto w-full space-y-8 animate-in zoom-in duration-500">
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-950 border border-yellow-400 text-yellow-300 font-mono text-xs uppercase font-bold tracking-widest mb-3">
+                <Sparkles className="h-4 w-4" /> CHAMPIONSHIP CEREMONY
               </div>
-              <h2 className="text-4xl lg:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-500 tracking-tight">
-                QUIZ CHAMPIONS
+              <h2 className="text-4xl md:text-5xl font-black text-white tracking-tight">
+                MUD CRAB FARMING CHAMPIONS
               </h2>
-              <p className="text-slate-400 text-sm mt-1">
-                Mud Crab Aquaculture Knowledge Championship — Final Honors
+              <p className="text-sm text-amber-200/80 mt-1">
+                Middle Andaman Aquaculture Knowledge Competition Winners
               </p>
             </div>
 
-            {/* Esports Olympic Podium */}
-            <div className="grid grid-cols-3 gap-4 lg:gap-8 items-end w-full max-w-4xl mb-12">
-              {/* 2nd Place (Silver) */}
+            {/* Olympic 3D Podium Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end pt-8">
+              {/* 2nd Place Silver */}
               <div
-                className={`flex flex-col items-center transition-all duration-700 ${
+                className={`order-2 md:order-1 crab-card rounded-2xl p-6 border-slate-400/60 text-center flex flex-col items-center justify-between shadow-2xl transition-all duration-700 ${
                   podiumStep >= 2 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
                 }`}
               >
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-slate-400 to-slate-200 text-black font-black text-xl flex items-center justify-center shadow-[0_0_25px_rgba(226,232,240,0.5)] mb-3 border-2 border-white">
-                  <Medal className="h-8 w-8 text-slate-800" />
+                <div className="h-16 w-16 rounded-full bg-slate-800 border-2 border-slate-300 flex items-center justify-center text-slate-200 mb-4 shadow-xl">
+                  <Medal className="h-8 w-8 text-slate-200" />
                 </div>
-                <div className="text-center mb-3">
-                  <div className="text-xs font-mono uppercase text-slate-400 tracking-wider">2ND PLACE</div>
-                  <div className="text-xl font-black text-white">{top2 ? top2.name : "—"}</div>
-                  <div className="text-sm font-mono text-slate-300">
-                    {top2 ? `${top2.score} / 20 pts` : "—"}
-                  </div>
-                  {top2 && <div className="text-[11px] font-mono text-slate-400">Time: {top2.formatted_time}</div>}
-                </div>
-                <div className="w-full h-44 rounded-t-2xl bg-gradient-to-t from-slate-900 to-slate-700/80 border-t-2 border-x-2 border-slate-400 flex items-center justify-center text-4xl font-black text-slate-300 font-mono shadow-xl">
-                  2
+                <div className="text-xs font-mono uppercase text-slate-300 font-bold">2ND PLACE • SILVER</div>
+                <div className="text-2xl font-black text-white mt-1">{top2 ? top2.name : "—"}</div>
+                <div className="mt-4 pt-3 border-t border-slate-800 w-full flex items-center justify-between text-xs font-mono">
+                  <span className="text-slate-400">Score: <strong className="text-white text-sm">{top2 ? top2.score : 0}/20</strong></span>
+                  <span className="text-slate-400">Time: <strong className="text-white text-sm">{top2 ? top2.formatted_time : "—"}</strong></span>
                 </div>
               </div>
 
-              {/* 1st Place (Gold Champion) */}
+              {/* 1st Place Gold Champion */}
               <div
-                className={`flex flex-col items-center transition-all duration-700 ${
+                className={`order-1 md:order-2 crab-card-active rounded-3xl p-8 border-yellow-400 text-center flex flex-col items-center justify-between shadow-[0_0_50px_rgba(245,158,11,0.5)] scale-105 transition-all duration-700 ${
                   podiumStep >= 3 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
                 }`}
               >
-                <div className="relative">
-                  <Crown className="h-10 w-10 text-amber-400 absolute -top-10 left-1/2 -translate-x-1/2 animate-bounce" />
-                  <div className="h-20 w-20 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 text-black font-black text-2xl flex items-center justify-center shadow-[0_0_35px_rgba(245,158,11,0.8)] mb-3 border-2 border-yellow-200">
-                    <Trophy className="h-10 w-10 text-amber-950" />
-                  </div>
+                <div className="h-20 w-20 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-500 border-2 border-yellow-200 flex items-center justify-center text-slate-950 mb-4 shadow-2xl animate-bounce">
+                  <Crown className="h-10 w-10 text-slate-950 fill-current" />
                 </div>
-                <div className="text-center mb-3">
-                  <div className="text-xs font-mono uppercase text-amber-400 font-bold tracking-widest">
-                    GRAND CHAMPION
-                  </div>
-                  <div className="text-2xl font-black text-white">{top1 ? top1.name : "—"}</div>
-                  <div className="text-base font-mono text-amber-300 font-bold">
-                    {top1 ? `${top1.score} / 20 pts` : "—"}
-                  </div>
-                  {top1 && (
-                    <div className="text-xs font-mono text-emerald-400 font-semibold">
-                      Time: {top1.formatted_time}
-                    </div>
-                  )}
+                <div className="text-xs font-mono uppercase text-yellow-300 font-black tracking-widest">
+                  👑 1ST PLACE CHAMPION • GOLD
                 </div>
-                <div className="w-full h-60 rounded-t-2xl bg-gradient-to-t from-amber-950 to-amber-600/80 border-t-4 border-x-2 border-amber-300 flex items-center justify-center text-6xl font-black text-amber-200 font-mono shadow-[0_0_40px_rgba(245,158,11,0.3)]">
-                  1
+                <div className="text-3xl md:text-4xl font-black text-white mt-1">{top1 ? top1.name : "—"}</div>
+                <div className="mt-5 pt-4 border-t border-amber-800 w-full flex items-center justify-between text-sm font-mono">
+                  <span className="text-amber-200">Score: <strong className="text-yellow-300 text-lg">{top1 ? top1.score : 0}/20</strong></span>
+                  <span className="text-amber-200">Time: <strong className="text-white text-lg">{top1 ? top1.formatted_time : "—"}</strong></span>
                 </div>
               </div>
 
-              {/* 3rd Place (Bronze) */}
+              {/* 3rd Place Bronze */}
               <div
-                className={`flex flex-col items-center transition-all duration-700 ${
+                className={`order-3 md:order-3 crab-card rounded-2xl p-6 border-amber-700/60 text-center flex flex-col items-center justify-between shadow-2xl transition-all duration-700 ${
                   podiumStep >= 1 ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
                 }`}
               >
-                <div className="h-14 w-14 rounded-2xl bg-gradient-to-tr from-amber-800 to-amber-600 text-black font-black text-lg flex items-center justify-center shadow-[0_0_20px_rgba(180,83,9,0.5)] mb-3 border-2 border-amber-500">
-                  <Award className="h-7 w-7 text-amber-950" />
+                <div className="h-16 w-16 rounded-full bg-amber-950 border-2 border-amber-600 flex items-center justify-center text-amber-400 mb-4 shadow-xl">
+                  <Award className="h-8 w-8 text-amber-400" />
                 </div>
-                <div className="text-center mb-3">
-                  <div className="text-xs font-mono uppercase text-amber-500 tracking-wider">3RD PLACE</div>
-                  <div className="text-lg font-black text-white">{top3 ? top3.name : "—"}</div>
-                  <div className="text-sm font-mono text-slate-300">
-                    {top3 ? `${top3.score} / 20 pts` : "—"}
-                  </div>
-                  {top3 && <div className="text-[11px] font-mono text-slate-400">Time: {top3.formatted_time}</div>}
+                <div className="text-xs font-mono uppercase text-amber-500 font-bold">3RD PLACE • BRONZE</div>
+                <div className="text-2xl font-black text-white mt-1">{top3 ? top3.name : "—"}</div>
+                <div className="mt-4 pt-3 border-t border-amber-900/60 w-full flex items-center justify-between text-xs font-mono">
+                  <span className="text-amber-400/80">Score: <strong className="text-white text-sm">{top3 ? top3.score : 0}/20</strong></span>
+                  <span className="text-amber-400/80">Time: <strong className="text-white text-sm">{top3 ? top3.formatted_time : "—"}</strong></span>
                 </div>
-                <div className="w-full h-32 rounded-t-2xl bg-gradient-to-t from-slate-900 to-amber-900/60 border-t-2 border-x-2 border-amber-700 flex items-center justify-center text-3xl font-black text-amber-400 font-mono shadow-xl">
-                  3
-                </div>
-              </div>
-            </div>
-
-            {/* Complete Final Standings Accordion/Table */}
-            <div className="w-full max-w-4xl p-5 rounded-2xl bg-[#091a26]/90 border border-cyan-900/60">
-              <h3 className="text-sm font-mono uppercase tracking-wider text-cyan-400 mb-3 flex items-center gap-2">
-                <ChevronRight className="h-4 w-4" /> COMPLETE TOURNAMENT STANDINGS
-              </h3>
-              <div className="max-h-56 overflow-y-auto pr-1">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-cyan-900/40 text-[11px] font-mono uppercase text-slate-400">
-                      <th className="py-2 px-3">Rank</th>
-                      <th className="py-2 px-3">Competitor</th>
-                      <th className="py-2 px-3 text-center">Score</th>
-                      <th className="py-2 px-3 text-right">Completion Time</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {leaderboard.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-800/40">
-                        <td className="py-2.5 px-3 font-mono font-bold text-cyan-300">#{p.rank}</td>
-                        <td className="py-2.5 px-3 font-bold text-white">{p.name}</td>
-                        <td className="py-2.5 px-3 text-center font-mono font-bold text-amber-400">
-                          {p.score} / 20
-                        </td>
-                        <td className="py-2.5 px-3 text-right font-mono text-slate-400">
-                          {p.formatted_time}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>
@@ -689,20 +579,9 @@ export default function MainDisplayPage() {
       </main>
 
       {/* Footer System Status Bar */}
-      <footer className="relative z-10 border-t border-cyan-900/40 pt-4 flex items-center justify-between text-xs font-mono text-slate-400">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            STADIUM ENGINE v1.0
-          </span>
-          <span className="hidden md:inline">|</span>
-          <span className="hidden md:inline text-slate-500">
-            20 Mud Crab Aquaculture Standards
-          </span>
-        </div>
-        <div className="text-right text-slate-500">
-          Organizer controls available at <span className="text-cyan-400">/admin</span>
-        </div>
+      <footer className="border-t border-amber-900/40 pt-3 flex items-center justify-between text-[11px] font-mono text-amber-400/60">
+        <span>🦀 MUD CRAB AQUACULTURE COMPETITION • MIDDLE ANDAMAN</span>
+        <span>TOURNAMENT ENGINE VERCEL READY</span>
       </footer>
     </div>
   );

@@ -7,11 +7,18 @@ export async function POST() {
     const sb = getSupabase();
     const now = new Date().toISOString();
 
-    await sb
+    // Mark session COMPLETED
+    const { error: sessErr } = await sb
       .from("quiz_sessions")
-      .update({ status: "COMPLETED", completed_at: now })
+      .update({ status: "COMPLETED" })
       .eq("id", session.id);
 
+    if (sessErr) {
+      console.error("Error ending quiz session:", sessErr);
+      return NextResponse.json({ detail: sessErr.message }, { status: 500 });
+    }
+
+    // Mark remaining playing participants as COMPLETED
     await sb
       .from("participants")
       .update({ status: "COMPLETED" })
@@ -21,6 +28,7 @@ export async function POST() {
     return NextResponse.json({
       status: "COMPLETED",
       completed_at: now,
+      session_id: session.id,
       message: "Competition ended and winners ready!",
     });
   } catch (err: unknown) {

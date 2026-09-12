@@ -37,26 +37,29 @@ export async function POST(req: NextRequest) {
     // Elapsed time calculation
     const now = new Date();
     let elapsed = participant.total_time_seconds || 0.0;
-    if (session.started_at) {
-      elapsed = Math.max(0.0, (now.getTime() - new Date(session.started_at).getTime()) / 1000);
+    if (participant.joined_at) {
+      elapsed = Math.max(0.0, (now.getTime() - new Date(participant.joined_at).getTime()) / 1000);
     }
 
-    // Update participant
+    // Update participant - only confirmed schema columns
     const updatePayload: Record<string, unknown> = {
       score: newScore,
       questions_answered: answeredCount,
-      total_time_seconds: elapsed,
+      total_time_seconds: Math.round(elapsed * 10) / 10,
     };
 
     if (isCompleted) {
       updatePayload.status = "COMPLETED";
-      updatePayload.completed_at = now.toISOString();
     }
 
-    await sb
+    const { error: updateErr } = await sb
       .from("participants")
       .update(updatePayload)
       .eq("id", participantId);
+
+    if (updateErr) {
+      console.error("Error updating participant answer progress:", updateErr);
+    }
 
     // Record answer
     await sb.from("answers").insert([
@@ -69,6 +72,28 @@ export async function POST(req: NextRequest) {
       },
     ]);
 
+    // Check if ALL participants in this session have now finished all questions
+    let allCompleted = false;
+    const { data: allParticipants } = await sb
+      .from("participants")
+      .select("id, status, questions_answered")
+      .eq("session_id", session.id);
+
+    if (allParticipants && allParticipants.length > 0) {
+      allCompleted = allParticipants.every(
+        (p) => p.status === "COMPLETED" || (p.questions_answered || 0) >= totalQ
+      );
+
+      if (allCompleted) {
+        // Automatically end the quiz competition when all participants finish!
+        console.log(`[Auto-End] All ${allParticipants.length} participants completed the quiz. Marking session as COMPLETED.`);
+        await sb
+          .from("quiz_sessions")
+          .update({ status: "COMPLETED" })
+          .eq("id", session.id);
+      }
+    }
+
     const nextQ = answeredCount + 1;
 
     return NextResponse.json({
@@ -76,6 +101,7 @@ export async function POST(req: NextRequest) {
       question_number: questionNumber,
       next_question: nextQ <= totalQ ? nextQ : null,
       completed: isCompleted,
+      all_completed: allCompleted,
       score: newScore,
     });
   } catch (err: unknown) {

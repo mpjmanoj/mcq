@@ -21,6 +21,11 @@ export async function GET(
       return NextResponse.json({ detail: "Participant not found." }, { status: 404 });
     }
 
+    // If organizer started a new session, invalidate old participant cache
+    if (participant.session_id !== session.id) {
+      return NextResponse.json({ detail: "Previous session ended. Ready for new tournament." }, { status: 404 });
+    }
+
     const answered = participant.questions_answered || 0;
     const total = session.total_questions || 20;
     const nextQ = answered >= total ? total : answered + 1;
