@@ -279,7 +279,7 @@ export default function AdminPage() {
               </div>
             </div>
             <h1 className="text-xl lg:text-2xl font-black tracking-tight text-white mt-1">
-              MUD CRAB QUIZ — ADMIN
+              MUD CRAB QUIZ — MIDDLE ANDAMAN ADMIN
             </h1>
           </div>
         </div>

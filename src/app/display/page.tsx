@@ -253,15 +253,15 @@ export default function MainDisplayPage() {
           <div>
             <div className="flex items-center gap-2.5">
               <span className="text-[11px] font-mono uppercase tracking-[0.25em] px-2 py-0.5 rounded bg-cyan-950/80 text-cyan-400 border border-cyan-800/60">
-                AQUACULTURE CHAMPIONSHIP
+                MIDDLE ANDAMAN AQUACULTURE CHAMPIONSHIP
               </span>
               <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-                <span className={`inline-block h-2 w-2 rounded-full ${wsConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
-                {wsConnected ? "LIVE FEED" : "SYNCING"}
+                <span className={`inline-block h-2 w-2 rounded-full ${wsConnected ? "bg-emerald-400 animate-pulse" : "bg-emerald-400"}`} />
+                <span>LIVE FEED</span>
               </div>
             </div>
             <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white mt-1">
-              MUD CRAB FARMING QUIZ COMPETITION
+              MUD CRAB FARMING QUIZ COMPETITION — MIDDLE ANDAMAN
             </h1>
           </div>
         </div>

@@ -379,7 +379,7 @@ export default function ParticipantPage() {
           </div>
           <div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-cyan-400">
-              MUD CRAB TOURNAMENT
+              MUD CRAB TOURNAMENT — MIDDLE ANDAMAN
             </div>
             <div className="text-xs font-bold text-white tracking-wide">
               {participantName ? participantName : "COMPETITOR TERMINAL"}

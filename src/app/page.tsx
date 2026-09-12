@@ -17,10 +17,10 @@ export default function Home() {
           </div>
           <div>
             <div className="text-[10px] font-mono uppercase tracking-[0.25em] text-cyan-400">
-              AQUACULTURE CHAMPIONSHIP
+              MIDDLE ANDAMAN AQUACULTURE CHAMPIONSHIP
             </div>
             <h1 className="text-lg font-black text-white tracking-wide">
-              MUD CRAB FARMING QUIZ
+              MUD CRAB FARMING QUIZ COMPETITION
             </h1>
           </div>
         </div>
