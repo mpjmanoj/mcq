@@ -384,6 +384,21 @@ export default function AdminPage() {
         </button>
       </div>
 
+      {/* Live Status Notice */}
+      {status === "LIVE" && (
+        <div className="mb-6 p-4 rounded-xl bg-cyan-950/60 border border-cyan-500/50 flex items-center justify-between text-xs font-mono text-cyan-200">
+          <div className="flex items-center gap-2">
+            <Radio className="h-4 w-4 text-cyan-400 animate-pulse shrink-0" />
+            <span>
+              <strong>COMPETITION IS LIVE:</strong> The quiz will <strong>NEVER</strong> end automatically. All participants can answer all questions at their own pace. The competition will only end when you click the red <strong>END QUIZ</strong> button above.
+            </span>
+          </div>
+          <span className="text-emerald-400 font-bold hidden md:inline shrink-0 ml-4">
+            MANUAL CONTROL ACTIVE
+          </span>
+        </div>
+      )}
+
       {/* Telemetry Metrics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="p-4 rounded-xl bg-[#091a26]/90 border border-cyan-900/60">
