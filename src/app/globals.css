@@ -2,75 +2,65 @@
 
 @layer base {
   :root {
-    --bg-main: #120c06;
-    --bg-surface: #1c130a;
-    --bg-surface-elevated: #291b0e;
-    --border-subtle: #452b14;
-    --border-glow: #f59e0b;
-    --crab-yellow: #fbbf24;
-    --crab-amber: #f59e0b;
+    --background: #f3eee3;
+    --foreground: #1c1a17;
+    --card: #fff9ee;
+    --card-border: rgba(59, 52, 42, 0.2);
+    --primary: #231f1a;
+    --primary-hover: #4a3225;
+    --muted: #655f56;
+    --ring: #8a5a3c;
+    --accent-terracotta: #6d4c2d;
+    --sand-border: #c3ad8b;
+    --badge-bg: #efe2cd;
+    --badge-text: #3f3021;
+    --gradient-top: #e8dcc8;
+    --gradient-bottom: #f7f1e7;
+
+    /* Coastal mud crab highlights */
+    --crab-yellow: #d97706;
+    --crab-amber: #b45309;
     --crab-brown: #382312;
-    --crab-mud: #1a1108;
-    --crab-gold: #facc15;
-    --bio-emerald: #10b981;
-    --crab-red: #ea580c;
+    --crab-mud: #1c1a17;
+    --crab-gold: #f59e0b;
+    --bio-emerald: #16a34a;
+    --crab-red: #dc2626;
   }
 
   body {
-    background-color: #120c06;
-    color: #fef3c7;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
     background-image: 
-      radial-gradient(ellipse at top, rgba(245, 158, 11, 0.12) 0%, transparent 60%),
-      radial-gradient(ellipse at bottom, rgba(120, 73, 35, 0.18) 0%, transparent 50%),
-      linear-gradient(to right, rgba(251, 191, 36, 0.03) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(251, 191, 36, 0.03) 1px, transparent 1px);
+      radial-gradient(ellipse at top, rgba(232, 220, 200, 0.6) 0%, transparent 70%),
+      radial-gradient(ellipse at bottom, rgba(247, 241, 231, 0.8) 0%, transparent 60%),
+      linear-gradient(to right, rgba(109, 76, 45, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(109, 76, 45, 0.05) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
   }
 }
 
-/* Custom Mud Crab Aquaculture UI Utilities */
-.glow-yellow {
-  box-shadow: 0 0 25px rgba(251, 191, 36, 0.4), inset 0 0 15px rgba(251, 191, 36, 0.15);
-}
-
-.glow-yellow-sm {
-  box-shadow: 0 0 12px rgba(251, 191, 36, 0.3);
-}
-
-.glow-amber {
-  box-shadow: 0 0 25px rgba(245, 158, 11, 0.45), inset 0 0 15px rgba(245, 158, 11, 0.2);
-}
-
-.glow-brown {
-  box-shadow: 0 0 30px rgba(92, 58, 30, 0.5), inset 0 0 15px rgba(56, 35, 18, 0.3);
-}
-
-.glow-emerald {
-  box-shadow: 0 0 25px rgba(16, 185, 129, 0.4), inset 0 0 15px rgba(16, 185, 129, 0.15);
-}
-
-.text-glow-yellow {
-  text-shadow: 0 0 15px rgba(251, 191, 36, 0.7);
-}
-
-.text-glow-amber {
-  text-shadow: 0 0 20px rgba(245, 158, 11, 0.75);
-}
-
+/* Authentic Crab Shack Design System Utilities */
 .crab-card {
-  background: linear-gradient(135deg, rgba(28, 19, 10, 0.92) 0%, rgba(18, 12, 6, 0.97) 100%);
-  border: 1px solid #4a2f15;
-  backdrop-filter: blur(12px);
-  position: relative;
+  background: rgba(255, 249, 238, 0.96);
+  border: 1px solid #c3ad8b;
+  box-shadow: 0 12px 30px -5px rgba(45, 36, 24, 0.09), 0 6px 12px -4px rgba(45, 36, 24, 0.05);
+  backdrop-filter: blur(10px);
 }
 
 .crab-card-active {
-  background: linear-gradient(135deg, rgba(45, 29, 17, 0.95) 0%, rgba(28, 19, 10, 0.98) 100%);
-  border: 1px solid #f59e0b;
-  box-shadow: 0 0 25px rgba(245, 158, 11, 0.35);
+  background: #ffffff;
+  border: 2px solid #8a5a3c;
+  box-shadow: 0 0 0 3px rgba(138, 90, 60, 0.25), 0 16px 36px rgba(45, 36, 24, 0.12);
+}
+
+.crab-card-dark {
+  background: linear-gradient(135deg, rgba(35, 31, 26, 0.97) 0%, rgba(24, 21, 17, 0.98) 100%);
+  border: 1px solid #4a3225;
+  box-shadow: 0 12px 35px rgba(28, 26, 23, 0.25);
+  backdrop-filter: blur(12px);
 }
 
 /* Backward compatibility for cyber-card classes */
