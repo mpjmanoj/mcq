@@ -45,6 +45,7 @@ export default function ParticipantPage() {
   const [flowState, setFlowState] = useState<string>("REGISTER");
   const [countdown, setCountdown] = useState<number | null>(null);
   const [totalParticipantsJoined, setTotalParticipantsJoined] = useState<number>(1);
+  const [totalQuestions, setTotalQuestions] = useState<number>(59);
 
   // Question & Answering State
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState<number>(1);
@@ -91,10 +92,12 @@ export default function ParticipantPage() {
         setParticipantName(data.name);
         setParticipantMobile(data.mobile);
 
+        if (data.total_questions) setTotalQuestions(data.total_questions);
         if (data.quiz_status === "WAITING") {
           setFlowState("WAITING");
         } else if (data.quiz_status === "LIVE") {
-          if (data.status === "COMPLETED" || (data.questions_answered >= (data.total_questions || 20))) {
+          const totalQ = data.total_questions || 59;
+          if (data.status === "COMPLETED" || (data.questions_answered >= totalQ)) {
             setFlowState("COMPLETED");
             setFinalScore(data.score);
           } else {
@@ -125,6 +128,7 @@ export default function ParticipantPage() {
       if (res.ok) {
         const data = await res.json();
         setCurrentQuestion(data);
+        if (data.total_questions) setTotalQuestions(data.total_questions);
         setSelectedOption(null);
         setIsAnswerLocked(false);
         setFeedbackNotice("");
@@ -510,7 +514,7 @@ export default function ParticipantPage() {
             </h2>
 
             <p className="text-xs text-amber-200/70 max-w-xs mx-auto mt-1 leading-relaxed">
-              You are officially registered. The 20 MCQ competition will commence automatically when the organizer presses Start.
+              You are officially registered. The {totalQuestions} MCQ examination will commence automatically when the organizer presses Start.
             </p>
 
             <div className="my-6 p-4 rounded-xl bg-[#1c1209] border border-amber-900/60 text-xs font-mono space-y-2 text-left">
@@ -540,7 +544,7 @@ export default function ParticipantPage() {
             {/* Question Progress Header */}
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-amber-400 font-bold">
-                QUESTION {currentQuestionNumber.toString().padStart(2, "0")} / 20
+                QUESTION {currentQuestionNumber.toString().padStart(2, "0")} / {totalQuestions}
               </span>
               <span className="text-amber-200/70">{participantName}</span>
             </div>
@@ -549,7 +553,7 @@ export default function ParticipantPage() {
             <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 transition-all duration-300"
-                style={{ width: `${(currentQuestionNumber / 20) * 100}%` }}
+                style={{ width: `${(currentQuestionNumber / totalQuestions) * 100}%` }}
               />
             </div>
 
@@ -636,7 +640,7 @@ export default function ParticipantPage() {
             </div>
 
             <div className="inline-block px-3 py-1 rounded-full bg-emerald-950 border border-emerald-600/50 text-emerald-300 font-mono text-[11px] font-bold uppercase tracking-widest mb-3">
-              ALL 20 QUESTIONS COMPLETED
+              ALL {totalQuestions} QUESTIONS COMPLETED
             </div>
 
             <h2 className="text-2xl font-black text-white tracking-tight">
@@ -644,7 +648,7 @@ export default function ParticipantPage() {
             </h2>
 
             <p className="text-xs text-amber-200/70 max-w-xs mt-2 leading-relaxed">
-              You have completed all 20 questions. Your responses and finish timestamps are securely locked into the tournament database.
+              You have completed all {totalQuestions} questions. Your responses and finish timestamps are securely locked into the tournament database.
             </p>
 
             <div className="w-full my-6 p-4 rounded-xl bg-[#1c1209] border border-amber-900/60 text-left space-y-2 text-xs font-mono">
@@ -654,11 +658,11 @@ export default function ParticipantPage() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-amber-400/70">Questions Answered</span>
-                <span className="text-emerald-400 font-bold">20 / 20 Complete</span>
+                <span className="text-emerald-400 font-bold">{totalQuestions} / {totalQuestions} Complete</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-amber-400/70">Score Achieved</span>
-                <span className="text-yellow-400 font-bold">{finalScore !== null ? `${finalScore} / 20` : "Recorded"}</span>
+                <span className="text-yellow-400 font-bold">{finalScore !== null ? `${finalScore} / ${totalQuestions}` : "Recorded"}</span>
               </div>
             </div>
 
@@ -694,7 +698,7 @@ export default function ParticipantPage() {
               <div>
                 <div className="text-[11px] font-mono text-amber-400/70 uppercase">Your Final Score</div>
                 <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-400 font-mono">
-                  {finalScore !== null ? `${finalScore} / 20` : "—"}
+                  {finalScore !== null ? `${finalScore} / ${totalQuestions}` : "—"}
                 </div>
               </div>
 

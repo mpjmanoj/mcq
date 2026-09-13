@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       .order("total_time_seconds", { ascending: true })
       .order("joined_at", { ascending: true });
 
-    const totalQ = session.total_questions || 20;
+    const totalQ = session.total_questions || 59;
 
     const leaderboard = (participants || []).map((p, idx) => {
       const mob = p.mobile_number || "";

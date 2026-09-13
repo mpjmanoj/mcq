@@ -23,9 +23,9 @@ export async function getOrCreateSession() {
   // Create session
   const newSession = {
     id: "default-session-" + Date.now(),
-    title: "Mud Crab Farming Quiz Competition",
+    title: "Mud Crab Fattening & RAS Machinery Examination",
     status: "WAITING",
-    total_questions: 20,
+    total_questions: INITIAL_QUESTIONS.length,
   };
 
   const { data: created } = await sb

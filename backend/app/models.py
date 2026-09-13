@@ -16,7 +16,7 @@ class QuizSession(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     title = Column(String, default="Mud Crab Farming Quiz Competition")
     status = Column(String, default="WAITING")  # WAITING, LIVE, COMPLETED
-    total_questions = Column(Integer, default=20)
+    total_questions = Column(Integer, default=59)
     created_at = Column(DateTime, default=utc_now)
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)

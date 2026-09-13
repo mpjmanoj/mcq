@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     const isCorrect = selectedOption === question.correct_option.trim().toUpperCase();
     const answeredCount = (participant.questions_answered || 0) + 1;
     const newScore = (participant.score || 0) + (isCorrect ? 1 : 0);
-    const totalQ = session.total_questions || 20;
+    const totalQ = session.total_questions || INITIAL_QUESTIONS.length;
     const isCompleted = answeredCount >= totalQ;
 
     // Elapsed time calculation

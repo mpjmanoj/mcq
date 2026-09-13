@@ -49,6 +49,7 @@ interface ActivityItem {
 
 export default function MainDisplayPage() {
   const [status, setStatus] = useState<"WAITING" | "LIVE" | "COMPLETED">("WAITING");
+  const [totalQuestions, setTotalQuestions] = useState<number>(59);
   const [participants, setParticipants] = useState<ParticipantItem[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardItem[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
@@ -87,6 +88,9 @@ export default function MainDisplayPage() {
       if (resSession.ok) {
         const sess = await resSession.json();
         setStatus(sess.status);
+        if (sess.total_questions) {
+          setTotalQuestions(sess.total_questions);
+        }
       }
 
       if (status === "WAITING") {
@@ -100,6 +104,9 @@ export default function MainDisplayPage() {
         if (resLb.ok) {
           const data = await resLb.json();
           setLeaderboard(data.leaderboard || []);
+          if (data.total_questions) {
+            setTotalQuestions(data.total_questions);
+          }
         }
       }
     } catch {
@@ -128,6 +135,9 @@ export default function MainDisplayPage() {
             const msg = JSON.parse(event.data);
             if (msg.event === "initial_state") {
               setStatus(msg.data.status);
+              if (msg.data.total_questions) {
+                setTotalQuestions(msg.data.total_questions);
+              }
               if (msg.data.participants) {
                 setParticipants(msg.data.participants);
               }
@@ -450,12 +460,12 @@ export default function MainDisplayPage() {
                           <td className="py-3.5 px-3 text-center text-xs">
                             <span
                               className={`px-2 py-0.5 rounded-full ${
-                                p.completed || p.questions_answered >= 20
+                                p.completed || p.questions_answered >= totalQuestions
                                   ? "bg-emerald-950 text-emerald-300 border border-emerald-600"
                                   : "bg-amber-950 text-amber-400 border border-amber-800"
                               }`}
                             >
-                              {p.completed || p.questions_answered >= 20 ? "DONE (20/20)" : `${p.questions_answered}/20`}
+                              {p.completed || p.questions_answered >= totalQuestions ? `DONE (${totalQuestions}/${totalQuestions})` : `${p.questions_answered}/${totalQuestions}`}
                             </span>
                           </td>
                           <td className="py-3.5 px-3 text-right text-slate-400 text-xs">
@@ -533,7 +543,7 @@ export default function MainDisplayPage() {
                 <div className="text-xs font-mono uppercase text-slate-300 font-bold">2ND PLACE • SILVER</div>
                 <div className="text-2xl font-black text-white mt-1">{top2 ? top2.name : "—"}</div>
                 <div className="mt-4 pt-3 border-t border-slate-800 w-full flex items-center justify-between text-xs font-mono">
-                  <span className="text-slate-400">Score: <strong className="text-white text-sm">{top2 ? top2.score : 0}/20</strong></span>
+                  <span className="text-slate-400">Score: <strong className="text-white text-sm">{top2 ? top2.score : 0}/{totalQuestions}</strong></span>
                   <span className="text-slate-400">Time: <strong className="text-white text-sm">{top2 ? top2.formatted_time : "—"}</strong></span>
                 </div>
               </div>
@@ -552,7 +562,7 @@ export default function MainDisplayPage() {
                 </div>
                 <div className="text-3xl md:text-4xl font-black text-white mt-1">{top1 ? top1.name : "—"}</div>
                 <div className="mt-5 pt-4 border-t border-amber-800 w-full flex items-center justify-between text-sm font-mono">
-                  <span className="text-amber-200">Score: <strong className="text-yellow-300 text-lg">{top1 ? top1.score : 0}/20</strong></span>
+                  <span className="text-amber-200">Score: <strong className="text-yellow-300 text-lg">{top1 ? top1.score : 0}/{totalQuestions}</strong></span>
                   <span className="text-amber-200">Time: <strong className="text-white text-lg">{top1 ? top1.formatted_time : "—"}</strong></span>
                 </div>
               </div>
@@ -569,7 +579,7 @@ export default function MainDisplayPage() {
                 <div className="text-xs font-mono uppercase text-amber-500 font-bold">3RD PLACE • BRONZE</div>
                 <div className="text-2xl font-black text-white mt-1">{top3 ? top3.name : "—"}</div>
                 <div className="mt-4 pt-3 border-t border-amber-900/60 w-full flex items-center justify-between text-xs font-mono">
-                  <span className="text-amber-400/80">Score: <strong className="text-white text-sm">{top3 ? top3.score : 0}/20</strong></span>
+                  <span className="text-amber-400/80">Score: <strong className="text-white text-sm">{top3 ? top3.score : 0}/{totalQuestions}</strong></span>
                   <span className="text-amber-400/80">Time: <strong className="text-white text-sm">{top3 ? top3.formatted_time : "—"}</strong></span>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSupabase, getOrCreateSession } from "@/lib/supabaseServer";
+import { INITIAL_QUESTIONS } from "@/lib/questions";
 
 export async function GET() {
   try {
@@ -12,7 +13,7 @@ export async function GET() {
       .eq("session_id", session.id);
 
     let currentStatus = session.status;
-    const totalQ = session.total_questions || 20;
+    const totalQ = session.total_questions || INITIAL_QUESTIONS.length;
 
     // If LIVE, check if all registered participants have finished all questions
     if (currentStatus === "LIVE" && participants && participants.length > 0) {

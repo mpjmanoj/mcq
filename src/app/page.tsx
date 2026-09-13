@@ -88,7 +88,7 @@ export default function Home() {
                 Participant Screen
               </h3>
               <p className="text-xs text-amber-200/70 mt-2 leading-relaxed">
-                Scan QR code, enter full name & mobile number, wait in the lobby, and answer the 20 mud crab competition questions.
+                Scan QR code, enter full name & mobile number, wait in the lobby, and answer the 59 mud crab examination questions.
               </p>
             </div>
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase, getOrCreateSession } from "@/lib/supabaseServer";
+import { INITIAL_QUESTIONS } from "@/lib/questions";
 
 export async function GET(
   req: NextRequest,
@@ -27,7 +28,7 @@ export async function GET(
     }
 
     const answered = participant.questions_answered || 0;
-    const total = session.total_questions || 20;
+    const total = session.total_questions || INITIAL_QUESTIONS.length;
     const nextQ = answered >= total ? total : answered + 1;
     const mob = participant.mobile_number || "";
 

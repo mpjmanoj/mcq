@@ -7,9 +7,9 @@ export async function POST() {
     const sb = getSupabase();
     const newSession = {
       id: "session-" + Date.now(),
-      title: "Mud Crab Farming Quiz Competition",
+      title: "Mud Crab Fattening & RAS Machinery Examination",
       status: "WAITING",
-      total_questions: 20,
+      total_questions: INITIAL_QUESTIONS.length,
     };
 
     const { data: created, error } = await sb

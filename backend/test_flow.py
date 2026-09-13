@@ -57,57 +57,56 @@ def test_full_competition_flow():
     assert "correct_option" not in q1, "SECURITY BREACH: correct_option exposed to participant!"
     print("✓ Security verified: correct_option is strictly omitted from participant question endpoint")
 
-    print("\n>>> 6. Simulating answer submissions for all 20 questions...")
+    print("\n>>> 6. Simulating answer submissions for all questions...")
     # Fetch admin questions to know answers for simulation
     admin_qs = requests.get(f"{BASE_URL}/api/admin/questions").json()
-    assert len(admin_qs) == 20, f"Expected 20 questions, found {len(admin_qs)}"
+    total_qs = len(admin_qs)
+    assert total_qs == 59, f"Expected 59 questions, found {total_qs}"
 
-    # Priya answers all 20 correctly
+    # Priya answers all questions correctly
     for q in admin_qs:
         ans_res = requests.post(f"{BASE_URL}/api/quiz/answer", json={
             "participant_id": p3_id,
             "question_number": q["question_number"],
             "selected_option": q["correct_option"]
-        }).json()
-        assert ans_res["status"] == "success"
-    print("✓ Priya submitted all 20 answers (all correct)")
+        })
+        assert ans_res.status_code == 200
+    print(f"✓ Priya submitted all {total_qs} answers (all correct)")
 
-    time.sleep(0.5)
-
-    # Rahul answers 19 correctly, 1 wrong
-    for q in admin_qs:
-        opt = q["correct_option"] if q["question_number"] != 5 else ("A" if q["correct_option"] != "A" else "B")
+    # Rahul answers all but misses question 1
+    for i, q in enumerate(admin_qs):
+        wrong_opt = "A" if q["correct_option"] != "A" else "B"
+        selected = wrong_opt if i == 0 else q["correct_option"]
         ans_res = requests.post(f"{BASE_URL}/api/quiz/answer", json={
             "participant_id": p1_id,
             "question_number": q["question_number"],
-            "selected_option": opt
-        }).json()
-        assert ans_res["status"] == "success"
-    print("✓ Rahul submitted all 20 answers (19 correct)")
+            "selected_option": selected
+        })
+        assert ans_res.status_code == 200
+    print(f"✓ Rahul submitted all {total_qs} answers ({total_qs - 1} correct)")
 
-    time.sleep(0.5)
-
-    # Anil answers 18 correctly, 2 wrong
-    for q in admin_qs:
-        opt = q["correct_option"] if q["question_number"] not in [2, 7] else ("A" if q["correct_option"] != "A" else "B")
+    # Anil answers all but misses questions 1 and 2
+    for i, q in enumerate(admin_qs):
+        wrong_opt = "A" if q["correct_option"] != "A" else "B"
+        selected = wrong_opt if i < 2 else q["correct_option"]
         ans_res = requests.post(f"{BASE_URL}/api/quiz/answer", json={
             "participant_id": p2_id,
             "question_number": q["question_number"],
-            "selected_option": opt
-        }).json()
-        assert ans_res["status"] == "success"
-    print("✓ Anil submitted all 20 answers (18 correct)")
+            "selected_option": selected
+        })
+        assert ans_res.status_code == 200
+    print(f"✓ Anil submitted all {total_qs} answers ({total_qs - 2} correct)")
 
     print("\n>>> 7. Checking Leaderboard & Tie-Breaker...")
     lb_data = requests.get(f"{BASE_URL}/api/quiz/leaderboard").json()
     lb = lb_data["leaderboard"]
     print("Leaderboard Standings:")
     for item in lb:
-        print(f"  Rank #{item['rank']}: {item['name']} - Score: {item['score']}/20 (Time: {item['formatted_time']})")
+        print(f"  Rank #{item['rank']}: {item['name']} - Score: {item['score']}/{total_qs} (Time: {item['formatted_time']})")
 
-    assert lb[0]["name"] == "Priya" and lb[0]["score"] == 20, "1st place must be Priya with 20/20"
-    assert lb[1]["name"] == "Rahul" and lb[1]["score"] == 19, "2nd place must be Rahul with 19/20"
-    assert lb[2]["name"] == "Anil" and lb[2]["score"] == 18, "3rd place must be Anil with 18/20"
+    assert lb[0]["name"] == "Priya" and lb[0]["score"] == total_qs, f"1st place must be Priya with {total_qs}/{total_qs}"
+    assert lb[1]["name"] == "Rahul" and lb[1]["score"] == total_qs - 1, f"2nd place must be Rahul with {total_qs - 1}/{total_qs}"
+    assert lb[2]["name"] == "Anil" and lb[2]["score"] == total_qs - 2, f"3rd place must be Anil with {total_qs - 2}/{total_qs}"
     print("✓ Rankings, Scores, and Tie-breaking verified!")
 
     print("\n>>> 8. Ending Quiz & Ceremony...")

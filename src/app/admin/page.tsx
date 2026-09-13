@@ -430,7 +430,7 @@ export default function AdminPage() {
           }`}
         >
           <BookOpen className="h-4 w-4 text-amber-400" />
-          <span>Mud Crab Questions (20 MCQ)</span>
+          <span>Mud Crab Questions ({questions.length || 59} MCQ)</span>
         </button>
       </div>
 
@@ -552,7 +552,7 @@ export default function AdminPage() {
                   {/* Kickoff CTA Bar */}
                   <div className="mt-6 pt-5 border-t border-amber-900/50 flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="text-xs font-mono text-amber-300/80">
-                      ⚡ When everyone is joined, press Start Quiz to begin the 20 MCQ match.
+                      ⚡ When everyone is joined, press Start Quiz to begin the {questions.length || 59} MCQ examination.
                     </div>
                     <button
                       onClick={() => setShowStartModal(true)}
@@ -583,7 +583,7 @@ export default function AdminPage() {
                         ⚡ COMPETITION IS CURRENTLY LIVE
                       </div>
                       <div className="text-xs text-amber-100/80 mt-0.5">
-                        Participants are answering the 20 questions on their phones.
+                        Participants are answering the {questions.length || 59} questions on their phones.
                         <strong> The quiz will automatically conclude when all participants finish</strong>, or you can click <strong>END QUIZ MANUALLY</strong> at any time.
                       </div>
                     </div>
@@ -603,14 +603,15 @@ export default function AdminPage() {
                       <Zap className="h-4 w-4 text-amber-400" /> Competitor Live Question Progress
                     </h3>
                     <span className="text-xs font-mono text-amber-400">
-                      Total: {participants.length} Players • 20 Questions
+                      Total: {participants.length} Players • {questions.length || 59} Questions
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {leaderboard.map((p) => {
-                      const pct = Math.min(100, Math.round(((p.questions_answered || 0) / (p.total_questions || 20)) * 100));
-                      const isDone = p.completed || p.questions_answered >= 20;
+                      const totalQ = p.total_questions || questions.length || 59;
+                      const pct = Math.min(100, Math.round(((p.questions_answered || 0) / totalQ) * 100));
+                      const isDone = p.completed || p.questions_answered >= totalQ;
 
                       return (
                         <div
@@ -630,7 +631,7 @@ export default function AdminPage() {
                                   : "bg-amber-950 text-amber-300 border border-amber-700"
                               }`}
                             >
-                              {isDone ? "✓ FINISHED 20/20" : `Q ${p.questions_answered} / 20`}
+                              {isDone ? `✓ FINISHED ${totalQ}/${totalQ}` : `Q ${p.questions_answered} / ${totalQ}`}
                             </span>
                           </div>
 
@@ -681,27 +682,31 @@ export default function AdminPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-amber-950/60 font-mono">
-                        {leaderboard.map((p) => (
-                          <tr key={p.id} className="hover:bg-amber-950/30">
-                            <td className="py-3 px-3 font-bold text-amber-400">#{p.rank}</td>
-                            <td className="py-3 px-3 font-sans font-bold text-white">{p.name}</td>
-                            <td className="py-3 px-3 text-amber-300/70 text-xs">{p.raw_mobile || p.mobile}</td>
-                            <td className="py-3 px-3 text-center font-bold text-amber-300">{p.score}</td>
-                            <td className="py-3 px-3 text-center text-amber-200/80">{p.questions_answered}/20</td>
-                            <td className="py-3 px-3 text-right text-slate-400 text-xs">{p.formatted_time}</td>
-                            <td className="py-3 px-3 text-right">
-                              <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full ${
-                                  p.completed || p.questions_answered >= 20
-                                    ? "bg-emerald-950 text-emerald-300 border border-emerald-700"
-                                    : "bg-amber-950 text-amber-400 border border-amber-800"
-                                }`}
-                              >
-                                {p.completed || p.questions_answered >= 20 ? "FINISHED" : "ANSWERING"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {leaderboard.map((p) => {
+                          const totalQ = p.total_questions || questions.length || 59;
+                          const isDone = p.completed || p.questions_answered >= totalQ;
+                          return (
+                            <tr key={p.id} className="hover:bg-amber-950/30">
+                              <td className="py-3 px-3 font-bold text-amber-400">#{p.rank}</td>
+                              <td className="py-3 px-3 font-sans font-bold text-white">{p.name}</td>
+                              <td className="py-3 px-3 text-amber-300/70 text-xs">{p.raw_mobile || p.mobile}</td>
+                              <td className="py-3 px-3 text-center font-bold text-amber-300">{p.score}</td>
+                              <td className="py-3 px-3 text-center text-amber-200/80">{p.questions_answered}/{totalQ}</td>
+                              <td className="py-3 px-3 text-right text-slate-400 text-xs">{p.formatted_time}</td>
+                              <td className="py-3 px-3 text-right">
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                    isDone
+                                      ? "bg-emerald-950 text-emerald-300 border border-emerald-700"
+                                      : "bg-amber-950 text-amber-400 border border-amber-800"
+                                  }`}
+                                >
+                                  {isDone ? "FINISHED" : "ANSWERING"}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -745,7 +750,7 @@ export default function AdminPage() {
                     <div className="text-xl font-black text-white mt-1">{top2 ? top2.name : "—"}</div>
                     <div className="text-xs font-mono text-slate-400 mt-0.5">{top2 ? top2.raw_mobile || top2.mobile : ""}</div>
                     <div className="mt-4 pt-3 border-t border-slate-800 w-full flex items-center justify-between text-xs font-mono">
-                      <span className="text-slate-400">Score: <strong className="text-white">{top2 ? top2.score : 0}/20</strong></span>
+                      <span className="text-slate-400">Score: <strong className="text-white">{top2 ? top2.score : 0}/{questions.length || 59}</strong></span>
                       <span className="text-slate-400">Time: <strong className="text-white">{top2 ? top2.formatted_time : "—"}</strong></span>
                     </div>
                   </div>
@@ -761,7 +766,7 @@ export default function AdminPage() {
                     <div className="text-2xl md:text-3xl font-black text-white mt-1">{top1 ? top1.name : "—"}</div>
                     <div className="text-xs font-mono text-amber-300/80 mt-0.5">{top1 ? top1.raw_mobile || top1.mobile : ""}</div>
                     <div className="mt-5 pt-4 border-t border-amber-800 w-full flex items-center justify-between text-xs font-mono">
-                      <span className="text-amber-200">Score: <strong className="text-white text-base">{top1 ? top1.score : 0}/20</strong></span>
+                      <span className="text-amber-200">Score: <strong className="text-white text-base">{top1 ? top1.score : 0}/{questions.length || 59}</strong></span>
                       <span className="text-amber-200">Time: <strong className="text-white text-base">{top1 ? top1.formatted_time : "—"}</strong></span>
                     </div>
                   </div>
@@ -775,7 +780,7 @@ export default function AdminPage() {
                     <div className="text-xl font-black text-white mt-1">{top3 ? top3.name : "—"}</div>
                     <div className="text-xs font-mono text-amber-400/60 mt-0.5">{top3 ? top3.raw_mobile || top3.mobile : ""}</div>
                     <div className="mt-4 pt-3 border-t border-amber-900/60 w-full flex items-center justify-between text-xs font-mono">
-                      <span className="text-amber-400/80">Score: <strong className="text-white">{top3 ? top3.score : 0}/20</strong></span>
+                      <span className="text-amber-400/80">Score: <strong className="text-white">{top3 ? top3.score : 0}/{questions.length || 59}</strong></span>
                       <span className="text-amber-400/80">Time: <strong className="text-white">{top3 ? top3.formatted_time : "—"}</strong></span>
                     </div>
                   </div>
@@ -807,7 +812,7 @@ export default function AdminPage() {
                             <td className="py-3 px-3 font-bold text-amber-400">#{p.rank}</td>
                             <td className="py-3 px-3 font-sans font-bold text-white">{p.name}</td>
                             <td className="py-3 px-3 text-amber-300/70 text-xs">{p.raw_mobile || p.mobile}</td>
-                            <td className="py-3 px-3 text-center font-bold text-amber-300">{p.score} / 20</td>
+                            <td className="py-3 px-3 text-center font-bold text-amber-300">{p.score} / {p.total_questions || questions.length || 59}</td>
                             <td className="py-3 px-3 text-right text-slate-400 text-xs">{p.formatted_time}</td>
                           </tr>
                         ))}
@@ -875,7 +880,7 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="py-3 px-3 text-center font-bold text-amber-300">{p.score}</td>
-                          <td className="py-3 px-3 text-center text-slate-300">{p.questions_answered}/20</td>
+                          <td className="py-3 px-3 text-center text-slate-300">{p.questions_answered}/{questions.length || 59}</td>
                           <td className="py-3 px-3 text-right">
                             <button
                               onClick={() => handleKickParticipant(p.id, p.name)}
@@ -899,9 +904,9 @@ export default function AdminPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-amber-900/50 pb-3">
               <div>
-                <h2 className="text-lg font-bold text-white">MIDDLE ANDAMAN MUD CRAB QUESTION BANK</h2>
+                <h2 className="text-lg font-bold text-white uppercase">CRAB SHACK AQUACULTURE TRAINING INSTITUTE</h2>
                 <p className="text-xs text-amber-200/70">
-                  20 authentic multi-choice questions covering mud crab farming, salinity, feeds, stocking, and harvesting.
+                  Model Examination: Mud Crab Fattening & RAS Machinery ({questions.length || 59} Questions with Official Answer Key)
                 </p>
               </div>
             </div>
