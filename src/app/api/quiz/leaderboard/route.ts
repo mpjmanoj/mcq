@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
 
     const totalQ = session.total_questions || 59;
 
-    const leaderboard = (participants || []).map((p, idx) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const leaderboard = (participants || []).map((p: any, idx: number) => {
       const mob = p.mobile_number || "";
       const masked = mob.length >= 4 ? "XXXX" + mob.slice(-4) : "XXXX";
       const timeSec = p.total_time_seconds || 0.0;

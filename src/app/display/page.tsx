@@ -215,8 +215,8 @@ export default function MainDisplayPage() {
     connectWs();
     refreshState();
 
-    // Fallback polling interval
-    const interval = setInterval(refreshState, 3000);
+    // Fast 1200ms polling for smooth stadium leaderboard updates
+    const interval = setInterval(refreshState, 1200);
 
     return () => {
       active = false;

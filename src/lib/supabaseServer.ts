@@ -4,19 +4,39 @@ import { INITIAL_QUESTIONS } from "./questions";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://wvufalstpgdxnhjpqajv.supabase.co";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_fjd7cqMG15FK6RFnN_u3Hw_fpdgvCXe";
 
-export const getSupabase = () => {
-  return createClient(supabaseUrl, supabaseAnonKey);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let cachedClient: any = null;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const getSupabase = (): any => {
+  if (!cachedClient) {
+    cachedClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false },
+    });
+  }
+  return cachedClient;
 };
 
-export async function getOrCreateSession() {
+// In-memory session cache (2-second TTL) for high-performance 20+ user live quizzes
+let cachedSession: any = null;
+let lastSessionFetchTime = 0;
+
+export async function getOrCreateSession(forceRefresh: boolean = false) {
+  const now = Date.now();
+  if (!forceRefresh && cachedSession && now - lastSessionFetchTime < 2000) {
+    return cachedSession;
+  }
+
   const sb = getSupabase();
-  const { data: existing, error } = await sb
+  const { data: existing } = await sb
     .from("quiz_sessions")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(1);
 
   if (existing && existing.length > 0) {
+    cachedSession = existing[0];
+    lastSessionFetchTime = now;
     return existing[0];
   }
 

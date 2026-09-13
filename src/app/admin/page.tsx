@@ -140,19 +140,22 @@ export default function AdminPage() {
   const fetchSessionData = useCallback(async () => {
     try {
       const api = getApiBaseUrl();
-      const resSession = await fetch(`${api}/api/quiz/session`);
+      const [resSession, resPart, resLb] = await Promise.all([
+        fetch(`${api}/api/quiz/session`),
+        fetch(`${api}/api/participants`),
+        fetch(`${api}/api/quiz/leaderboard?admin=true`),
+      ]);
+
       if (resSession.ok) {
         const sess = await resSession.json();
         setStatus(sess.status);
       }
 
-      const resPart = await fetch(`${api}/api/participants`);
       if (resPart.ok) {
         const data = await resPart.json();
         setParticipants(data.participants || []);
       }
 
-      const resLb = await fetch(`${api}/api/quiz/leaderboard?admin=true`);
       if (resLb.ok) {
         const data = await resLb.json();
         setLeaderboard(data.leaderboard || []);
@@ -203,6 +206,7 @@ export default function AdminPage() {
               fetchSessionData();
             } else if (msg.event === "leaderboard_updated") {
               setLeaderboard(msg.data.leaderboard || []);
+              fetchSessionData();
             } else if (msg.event === "quiz_completed") {
               setStatus("COMPLETED");
               sounds.stopRetroTheme();
@@ -233,7 +237,8 @@ export default function AdminPage() {
     fetchSessionData();
     fetchQuestions();
 
-    const interval = setInterval(fetchSessionData, 2500);
+    // 1000ms polling ensures live tournament standings update smoothly and fast
+    const interval = setInterval(fetchSessionData, 1000);
 
     return () => {
       active = false;

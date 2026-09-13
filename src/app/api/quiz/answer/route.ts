@@ -30,13 +30,30 @@ export async function POST(req: NextRequest) {
 
     const isCorrect = selectedOption === question.correct_option.trim().toUpperCase();
 
+    // Query question ID in Supabase for this session to satisfy foreign key constraint if active
+    const { data: qRows } = await sb
+      .from("questions")
+      .select("id")
+      .eq("session_id", session.id)
+      .eq("question_number", questionNumber)
+      .limit(1);
+
+    const dbQuestionId = qRows && qRows.length > 0 ? qRows[0].id : null;
+    const targetQId = dbQuestionId || questionNumber;
+
     // Check if an answer for this question already exists for this participant
-    const { data: existingAnswers } = await sb
+    let existingQuery = sb
       .from("answers")
       .select("*")
-      .eq("participant_id", participantId)
-      .eq("question_id", questionNumber);
+      .eq("participant_id", participantId);
 
+    if (dbQuestionId) {
+      existingQuery = existingQuery.or(`question_id.eq.${dbQuestionId},question_id.eq.${questionNumber}`);
+    } else {
+      existingQuery = existingQuery.eq("question_id", questionNumber);
+    }
+
+    const { data: existingAnswers } = await existingQuery;
     const existing = existingAnswers && existingAnswers.length > 0 ? existingAnswers[0] : null;
 
     let currentScore = participant.score || 0;
@@ -52,22 +69,35 @@ export async function POST(req: NextRequest) {
         .update({
           selected_option: selectedOption,
           is_correct: isCorrect,
+          answered_at: new Date().toISOString(),
         })
         .eq("id", existing.id);
     } else {
       if (isCorrect) {
         currentScore += 1;
       }
-      // Insert new answer
-      await sb.from("answers").insert([
+      // Insert new answer - try targetQId first, fallback to questionNumber
+      const { error: insErr } = await sb.from("answers").insert([
         {
           id: "ans-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
           participant_id: participantId,
-          question_id: questionNumber,
+          question_id: targetQId,
           selected_option: selectedOption,
           is_correct: isCorrect,
         },
       ]);
+
+      if (insErr && dbQuestionId && targetQId !== questionNumber) {
+        await sb.from("answers").insert([
+          {
+            id: "ans-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+            participant_id: participantId,
+            question_id: questionNumber,
+            selected_option: selectedOption,
+            is_correct: isCorrect,
+          },
+        ]);
+      }
     }
 
     // Get true unique answered count
@@ -76,8 +106,15 @@ export async function POST(req: NextRequest) {
       .select("question_id")
       .eq("participant_id", participantId);
 
-    const uniqueCount = new Set(allAns?.map((a) => a.question_id)).size;
+    const answeredSet = new Set(allAns?.map((a: any) => a.question_id));
+    if (dbQuestionId) answeredSet.add(dbQuestionId);
+    answeredSet.add(questionNumber);
+
     const totalQ = session.total_questions || INITIAL_QUESTIONS.length;
+    const uniqueCount = Math.min(
+      totalQ,
+      Math.max(answeredSet.size, (participant.questions_answered || 0) + (existing ? 0 : 1))
+    );
     const isCompleted = uniqueCount >= totalQ;
 
     // Elapsed time calculation
@@ -87,7 +124,7 @@ export async function POST(req: NextRequest) {
       elapsed = Math.max(0.0, (now.getTime() - new Date(participant.joined_at).getTime()) / 1000);
     }
 
-    // Update participant - only confirmed schema columns
+    // Update participant - guaranteed score & answered count
     const updatePayload: Record<string, unknown> = {
       score: currentScore,
       questions_answered: uniqueCount,
@@ -104,28 +141,29 @@ export async function POST(req: NextRequest) {
       .eq("id", participantId);
 
     if (updateErr) {
-      console.error("Error updating participant answer progress:", updateErr);
+      console.error("Error updating participant score/progress:", updateErr);
     }
 
-    // Check if ALL participants in this session have now finished all questions
+    // Only check if all finished when this participant completes all questions
     let allCompleted = false;
-    const { data: allParticipants } = await sb
-      .from("participants")
-      .select("id, status, questions_answered")
-      .eq("session_id", session.id);
+    if (isCompleted) {
+      const { data: allParticipants } = await sb
+        .from("participants")
+        .select("id, status, questions_answered")
+        .eq("session_id", session.id);
 
-    if (allParticipants && allParticipants.length > 0) {
-      allCompleted = allParticipants.every(
-        (p) => p.status === "COMPLETED" || (p.questions_answered || 0) >= totalQ
-      );
+      if (allParticipants && allParticipants.length > 0) {
+        allCompleted = allParticipants.every(
+          (p: any) => p.status === "COMPLETED" || (p.questions_answered || 0) >= totalQ
+        );
 
-      if (allCompleted) {
-        // Automatically end the quiz competition when all participants finish!
-        console.log(`[Auto-End] All ${allParticipants.length} participants completed the quiz. Marking session as COMPLETED.`);
-        await sb
-          .from("quiz_sessions")
-          .update({ status: "COMPLETED" })
-          .eq("id", session.id);
+        if (allCompleted) {
+          console.log(`[Auto-End] All ${allParticipants.length} participants completed the quiz. Marking session as COMPLETED.`);
+          await sb
+            .from("quiz_sessions")
+            .update({ status: "COMPLETED" })
+            .eq("id", session.id);
+        }
       }
     }
 

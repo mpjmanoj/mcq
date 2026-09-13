@@ -16,7 +16,8 @@ export async function GET() {
       return NextResponse.json({ detail: error.message }, { status: 500 });
     }
 
-    const list = (participants || []).map((p) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const list = (participants || []).map((p: any) => {
       const mob = p.mobile_number || "";
       const masked = mob.length >= 4 ? "XXXX" + mob.slice(-4) : "XXXX";
       return {

@@ -17,8 +17,9 @@ export async function GET() {
 
     // If LIVE, check if all registered participants have finished all questions
     if (currentStatus === "LIVE" && participants && participants.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const allDone = participants.every(
-        (p) => p.status === "COMPLETED" || (p.questions_answered || 0) >= totalQ
+        (p: any) => p.status === "COMPLETED" || (p.questions_answered || 0) >= totalQ
       );
       if (allDone) {
         currentStatus = "COMPLETED";
