@@ -1,15 +1,17 @@
 // API Configuration & WebSocket URL Helper
 
 export const getApiBaseUrl = () => {
-  // If explicitly configured with an external backend URL
+  // If explicitly configured with an external backend URL (e.g. hosted FastAPI on Render/Railway/Fly/EC2)
   if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.trim() !== "") {
-    return process.env.NEXT_PUBLIC_API_URL;
+    return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, "");
   }
   
-  // In browser on Vercel or local Next.js:
-  // Using relative path "" routes directly to Next.js App Router API routes over HTTPS!
+  // When running locally, connect directly to the FastAPI server on port 8000
   if (typeof window !== "undefined") {
-    return "";
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
   }
   
   return "";

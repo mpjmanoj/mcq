@@ -29,10 +29,56 @@ export async function POST(req: NextRequest) {
     }
 
     const isCorrect = selectedOption === question.correct_option.trim().toUpperCase();
-    const answeredCount = (participant.questions_answered || 0) + 1;
-    const newScore = (participant.score || 0) + (isCorrect ? 1 : 0);
+
+    // Check if an answer for this question already exists for this participant
+    const { data: existingAnswers } = await sb
+      .from("answers")
+      .select("*")
+      .eq("participant_id", participantId)
+      .eq("question_id", questionNumber);
+
+    const existing = existingAnswers && existingAnswers.length > 0 ? existingAnswers[0] : null;
+
+    let currentScore = participant.score || 0;
+    if (existing) {
+      if (existing.is_correct && !isCorrect) {
+        currentScore = Math.max(0, currentScore - 1);
+      } else if (!existing.is_correct && isCorrect) {
+        currentScore += 1;
+      }
+      // Update existing answer
+      await sb
+        .from("answers")
+        .update({
+          selected_option: selectedOption,
+          is_correct: isCorrect,
+        })
+        .eq("id", existing.id);
+    } else {
+      if (isCorrect) {
+        currentScore += 1;
+      }
+      // Insert new answer
+      await sb.from("answers").insert([
+        {
+          id: "ans-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+          participant_id: participantId,
+          question_id: questionNumber,
+          selected_option: selectedOption,
+          is_correct: isCorrect,
+        },
+      ]);
+    }
+
+    // Get true unique answered count
+    const { data: allAns } = await sb
+      .from("answers")
+      .select("question_id")
+      .eq("participant_id", participantId);
+
+    const uniqueCount = new Set(allAns?.map((a) => a.question_id)).size;
     const totalQ = session.total_questions || INITIAL_QUESTIONS.length;
-    const isCompleted = answeredCount >= totalQ;
+    const isCompleted = uniqueCount >= totalQ;
 
     // Elapsed time calculation
     const now = new Date();
@@ -43,8 +89,8 @@ export async function POST(req: NextRequest) {
 
     // Update participant - only confirmed schema columns
     const updatePayload: Record<string, unknown> = {
-      score: newScore,
-      questions_answered: answeredCount,
+      score: currentScore,
+      questions_answered: uniqueCount,
       total_time_seconds: Math.round(elapsed * 10) / 10,
     };
 
@@ -60,17 +106,6 @@ export async function POST(req: NextRequest) {
     if (updateErr) {
       console.error("Error updating participant answer progress:", updateErr);
     }
-
-    // Record answer
-    await sb.from("answers").insert([
-      {
-        id: "ans-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
-        participant_id: participantId,
-        question_id: questionNumber,
-        selected_option: selectedOption,
-        is_correct: isCorrect,
-      },
-    ]);
 
     // Check if ALL participants in this session have now finished all questions
     let allCompleted = false;
@@ -94,7 +129,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const nextQ = answeredCount + 1;
+    const nextQ = questionNumber + 1;
 
     return NextResponse.json({
       status: "success",
@@ -102,7 +137,7 @@ export async function POST(req: NextRequest) {
       next_question: nextQ <= totalQ ? nextQ : null,
       completed: isCompleted,
       all_completed: allCompleted,
-      score: newScore,
+      score: currentScore,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : "Internal Server Error";

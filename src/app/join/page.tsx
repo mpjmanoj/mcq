@@ -4,6 +4,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import {
   ShieldCheck,
   CheckCircle,
+  CheckCircle2,
+  XCircle,
   AlertCircle,
   Clock,
   Send,
@@ -14,6 +16,11 @@ import {
   Volume2,
   VolumeX,
   RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Check,
+  X,
 } from "lucide-react";
 import { getApiBaseUrl, getWsUrl } from "@/lib/api";
 import { sounds } from "@/lib/sound";
@@ -26,6 +33,33 @@ interface QuestionData {
   option_b: string;
   option_c: string;
   option_d: string;
+}
+
+interface QuestionResult {
+  question_number: number;
+  question_text: string;
+  option_a: string;
+  option_b: string;
+  option_c: string;
+  option_d: string;
+  selected_option: string | null;
+  correct_option: string;
+  is_correct: boolean;
+  explanation: string;
+}
+
+interface IndividualResults {
+  participant_id: string;
+  name: string;
+  mobile: string;
+  status: string;
+  score: number;
+  total_questions: number;
+  correct_count: number;
+  wrong_count: number;
+  percentage: number;
+  formatted_time: string;
+  questions: QuestionResult[];
 }
 
 export default function ParticipantPage() {
@@ -58,6 +92,10 @@ export default function ParticipantPage() {
   // Final Results
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [finalRank, setFinalRank] = useState<number | null>(null);
+  const [answersMap, setAnswersMap] = useState<Record<number, string>>({});
+  const [individualResults, setIndividualResults] = useState<IndividualResults | null>(null);
+  const [resultsFilter, setResultsFilter] = useState<"all" | "correct" | "wrong">("all");
+  const [isLoadingResults, setIsLoadingResults] = useState<boolean>(false);
 
   // Connection & Audio
   const [wsConnected, setWsConnected] = useState<boolean>(false);
@@ -82,6 +120,37 @@ export default function ParticipantPage() {
     }
   }, []);
 
+  const fetchAnswersMap = async (pId: string): Promise<Record<number, string>> => {
+    try {
+      const api = getApiBaseUrl();
+      const res = await fetch(`${api}/api/participants/${pId}/answers`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.answers) {
+          setAnswersMap(data.answers);
+          return data.answers;
+        }
+      }
+    } catch {}
+    return {};
+  };
+
+  const fetchIndividualResults = async (pId: string) => {
+    setIsLoadingResults(true);
+    try {
+      const api = getApiBaseUrl();
+      const res = await fetch(`${api}/api/participants/${pId}/results`);
+      if (res.ok) {
+        const data = await res.json();
+        setIndividualResults(data);
+        if (data.score !== undefined) setFinalScore(data.score);
+        if (data.total_questions) setTotalQuestions(data.total_questions);
+      }
+    } catch {} finally {
+      setIsLoadingResults(false);
+    }
+  };
+
   // Fetch participant status & restore question
   const checkParticipantStatus = useCallback(async (pId: string) => {
     try {
@@ -100,15 +169,18 @@ export default function ParticipantPage() {
           if (data.status === "COMPLETED" || (data.questions_answered >= totalQ)) {
             setFlowState("COMPLETED");
             setFinalScore(data.score);
+            fetchIndividualResults(pId);
           } else {
             setFlowState("PLAYING");
             setCurrentQuestionNumber(data.next_question);
-            loadQuestion(data.next_question);
+            const map = await fetchAnswersMap(pId);
+            loadQuestion(data.next_question, map);
           }
         } else if (data.quiz_status === "COMPLETED") {
           setFlowState("RESULTS");
           setFinalScore(data.score);
           fetchFinalStanding(pId);
+          fetchIndividualResults(pId);
         }
       } else {
         // If participant not found in backend (e.g. after reset or new session)
@@ -121,7 +193,7 @@ export default function ParticipantPage() {
     }
   }, []);
 
-  const loadQuestion = async (qNum: number) => {
+  const loadQuestion = async (qNum: number, currentMap?: Record<number, string>) => {
     try {
       const api = getApiBaseUrl();
       const res = await fetch(`${api}/api/quiz/questions/${qNum}`);
@@ -129,11 +201,31 @@ export default function ParticipantPage() {
         const data = await res.json();
         setCurrentQuestion(data);
         if (data.total_questions) setTotalQuestions(data.total_questions);
-        setSelectedOption(null);
+        const map = currentMap || answersMap;
+        const prevAnswer = map[qNum] || null;
+        setSelectedOption(prevAnswer);
         setIsAnswerLocked(false);
-        setFeedbackNotice("");
+        setFeedbackNotice(prevAnswer ? `Your current choice: Option ${prevAnswer}` : "");
       }
     } catch {}
+  };
+
+  const handleGoBack = () => {
+    if (currentQuestionNumber > 1) {
+      const prevQ = currentQuestionNumber - 1;
+      setCurrentQuestionNumber(prevQ);
+      loadQuestion(prevQ);
+      sounds.playSelect();
+    }
+  };
+
+  const handleGoNext = () => {
+    if (currentQuestionNumber < totalQuestions) {
+      const nextQ = currentQuestionNumber + 1;
+      setCurrentQuestionNumber(nextQ);
+      loadQuestion(nextQ);
+      sounds.playSelect();
+    }
   };
 
   const fetchFinalStanding = async (pId: string) => {
@@ -306,7 +398,7 @@ export default function ParticipantPage() {
 
   // Handle Answer Submit
   const handleSubmitAnswer = async () => {
-    if (!selectedOption || isAnswerLocked || isSubmittingAnswer) return;
+    if (!selectedOption || isSubmittingAnswer) return;
 
     setIsSubmittingAnswer(true);
     sounds.playSubmit();
@@ -327,19 +419,22 @@ export default function ParticipantPage() {
 
       if (res.ok) {
         setIsAnswerLocked(true);
-        setFeedbackNotice("Answer submitted to server!");
+        const updatedMap = { ...answersMap, [currentQuestionNumber]: selectedOption };
+        setAnswersMap(updatedMap);
+        setFeedbackNotice(`✓ Question ${currentQuestionNumber} answer recorded!`);
 
-        if (data.completed) {
-          // Finished all 20 questions
+        const isLastQuestion = currentQuestionNumber >= totalQuestions;
+        if (data.completed || isLastQuestion) {
           setTimeout(() => {
             setFlowState("COMPLETED");
             setFinalScore(data.score);
-          }, 800);
+            fetchIndividualResults(participantId);
+          }, 600);
         } else if (data.next_question) {
           setTimeout(() => {
             setCurrentQuestionNumber(data.next_question);
-            loadQuestion(data.next_question);
-          }, 700);
+            loadQuestion(data.next_question, updatedMap);
+          }, 400);
         }
       } else {
         setFeedbackNotice(data.detail || "Error submitting answer.");
@@ -541,12 +636,72 @@ export default function ParticipantPage() {
         {/* ================= STAGE 3: PLAYING QUESTIONS ================= */}
         {flowState === "PLAYING" && currentQuestion && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Question Progress Header */}
+            {/* Top Navigation Header with Back and Next */}
             <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-amber-400 font-bold">
-                QUESTION {currentQuestionNumber.toString().padStart(2, "0")} / {totalQuestions}
-              </span>
-              <span className="text-amber-200/70">{participantName}</span>
+              <button
+                onClick={handleGoBack}
+                disabled={currentQuestionNumber <= 1}
+                className={`py-1.5 px-3 rounded-xl border flex items-center gap-1 text-xs cursor-pointer transition-all ${
+                  currentQuestionNumber > 1
+                    ? "bg-[#1c1209] border-amber-600/80 text-amber-300 hover:bg-amber-950 active:scale-95 shadow-sm"
+                    : "opacity-30 border-amber-900/40 text-amber-700 cursor-not-allowed"
+                }`}
+                title="Go to previous question"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Back</span>
+              </button>
+
+              <div className="flex flex-col items-center">
+                <span className="text-amber-300 font-black text-xs tracking-wider">
+                  QUESTION {currentQuestionNumber.toString().padStart(2, "0")} / {totalQuestions}
+                </span>
+                <span className="text-[10px] text-amber-400/70 font-mono">
+                  {answersMap[currentQuestionNumber] ? "Answered ✓" : "Not answered yet"}
+                </span>
+              </div>
+
+              <button
+                onClick={handleGoNext}
+                disabled={currentQuestionNumber >= totalQuestions}
+                className={`py-1.5 px-3 rounded-xl border flex items-center gap-1 text-xs cursor-pointer transition-all ${
+                  currentQuestionNumber < totalQuestions
+                    ? "bg-[#1c1209] border-amber-600/80 text-amber-300 hover:bg-amber-950 active:scale-95 shadow-sm"
+                    : "opacity-30 border-amber-900/40 text-amber-700 cursor-not-allowed"
+                }`}
+                title="Skip to next question"
+              >
+                <span>Next</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Quick Question Jumper (Horizontal Scrollable Pills) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
+              {Array.from({ length: totalQuestions }, (_, i) => i + 1).map((num) => {
+                const isCurrent = num === currentQuestionNumber;
+                const isAnswered = !!answersMap[num];
+                return (
+                  <button
+                    key={num}
+                    onClick={() => {
+                      setCurrentQuestionNumber(num);
+                      loadQuestion(num);
+                      sounds.playSelect();
+                    }}
+                    className={`h-7 w-7 rounded-lg text-[11px] font-mono font-bold shrink-0 flex items-center justify-center border transition-all cursor-pointer ${
+                      isCurrent
+                        ? "bg-yellow-400 text-slate-950 border-yellow-200 shadow-[0_0_12px_rgba(250,204,21,0.6)] scale-110 font-black"
+                        : isAnswered
+                        ? "bg-emerald-950 text-emerald-300 border-emerald-600/80"
+                        : "bg-[#1c1209] text-amber-400/60 border-amber-900/50 hover:border-amber-600 hover:text-white"
+                    }`}
+                    title={`Question ${num} ${isAnswered ? "(Answered)" : "(Unanswered)"}`}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Progress Bar */}
@@ -589,7 +744,7 @@ export default function ParticipantPage() {
                       <span
                         className={`h-7 w-7 rounded-lg font-mono font-bold text-xs flex items-center justify-center border shrink-0 ${
                           isSelected
-                            ? "bg-yellow-400 text-slate-950 border-yellow-300"
+                            ? "bg-yellow-400 text-slate-950 border-yellow-300 font-black"
                             : "bg-amber-950 text-amber-400 border-amber-700"
                         }`}
                       >
@@ -611,113 +766,263 @@ export default function ParticipantPage() {
               </div>
             )}
 
-            {/* Submit Answer Button */}
-            <button
-              onClick={handleSubmitAnswer}
-              disabled={!selectedOption || isAnswerLocked || isSubmittingAnswer}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 active:scale-[0.98] font-black text-slate-950 tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(245,158,11,0.5)] transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
-            >
-              {isSubmittingAnswer ? (
-                <span className="animate-pulse">LOCKING IN ANSWER...</span>
-              ) : isAnswerLocked ? (
-                <span className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4" /> ANSWER RECORDED
-                </span>
+            {/* Action Buttons Row with Back and Submit */}
+            <div className="flex gap-2.5 pt-1">
+              {currentQuestionNumber > 1 && (
+                <button
+                  onClick={handleGoBack}
+                  className="w-1/3 py-3.5 px-3 rounded-xl border border-amber-700/80 bg-[#1c1209] text-amber-300 font-bold text-xs flex items-center justify-center gap-1 hover:bg-[#27180c] active:scale-95 cursor-pointer transition-all"
+                  title="Return to previous question"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Previous
+                </button>
+              )}
+
+              <button
+                onClick={handleSubmitAnswer}
+                disabled={!selectedOption || isSubmittingAnswer}
+                className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 active:scale-[0.98] font-black text-slate-950 tracking-wider text-xs uppercase flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(245,158,11,0.5)] transition-all cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+              >
+                {isSubmittingAnswer ? (
+                  <span className="animate-pulse">RECORDING ANSWER...</span>
+                ) : currentQuestionNumber >= totalQuestions ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" /> SUBMIT FINAL ANSWER & FINISH
+                  </span>
+                ) : answersMap[currentQuestionNumber] && answersMap[currentQuestionNumber] === selectedOption ? (
+                  <span className="flex items-center gap-2">
+                    <span>NEXT QUESTION</span> <ChevronRight className="h-4 w-4" />
+                  </span>
+                ) : answersMap[currentQuestionNumber] ? (
+                  <span className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" /> UPDATE ANSWER & NEXT
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Send className="h-4 w-4" /> SUBMIT & NEXT QUESTION
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ================= STAGE 4 & 5: TEST COMPLETED & INDIVIDUAL RESULTS ================= */}
+        {(flowState === "COMPLETED" || flowState === "RESULTS") && (
+          <div className="space-y-4 animate-in zoom-in-95 duration-300">
+            {/* Hero Result Card */}
+            <div className="crab-card rounded-2xl p-5 border-amber-600 shadow-2xl text-center flex flex-col items-center">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-500 border border-yellow-200 flex items-center justify-center text-slate-950 mb-3 shadow-[0_0_25px_rgba(245,158,11,0.5)]">
+                <Trophy className="h-8 w-8 text-slate-950" />
+              </div>
+
+              <div className="inline-block px-3 py-1 rounded-full bg-amber-950 border border-amber-600 text-amber-300 font-mono text-[10px] font-bold uppercase tracking-widest mb-2">
+                EXAMINATION COMPLETE • INDIVIDUAL RESULTS
+              </div>
+
+              <h2 className="text-xl font-black text-white tracking-tight">
+                {participantName}
+              </h2>
+              <div className="text-xs text-amber-300/80 font-mono mt-0.5">
+                {flowState === "RESULTS" && finalRank ? `Rank #${finalRank} Overall • ` : ""}
+                Time: {individualResults?.formatted_time || "Recorded"}
+              </div>
+
+              {/* Score Highlight Grid */}
+              <div className="my-4 p-4 rounded-xl bg-[#1c1209] border border-amber-800/80 w-full grid grid-cols-3 gap-2 text-center">
+                <div className="flex flex-col items-center justify-center border-r border-amber-900/60 pr-1">
+                  <span className="text-[10px] font-mono text-amber-400/80 uppercase">Score</span>
+                  <span className="text-2xl font-black text-yellow-400 font-mono">
+                    {individualResults?.score ?? finalScore ?? 0}
+                    <span className="text-xs text-amber-400/60">/{totalQuestions}</span>
+                  </span>
+                </div>
+                <div className="flex flex-col items-center justify-center border-r border-amber-900/60 px-1">
+                  <span className="text-[10px] font-mono text-emerald-400/80 uppercase">Correct</span>
+                  <span className="text-2xl font-black text-emerald-400 font-mono flex items-center gap-0.5">
+                    <CheckCircle2 className="h-4 w-4" /> {individualResults?.correct_count ?? 0}
+                  </span>
+                </div>
+                <div className="flex flex-col items-center justify-center pl-1">
+                  <span className="text-[10px] font-mono text-red-400/80 uppercase">Wrong</span>
+                  <span className="text-2xl font-black text-red-400 font-mono flex items-center gap-0.5">
+                    <XCircle className="h-4 w-4" /> {individualResults?.wrong_count ?? 0}
+                  </span>
+                </div>
+              </div>
+
+              <div className="w-full flex items-center justify-between text-[11px] font-mono text-amber-300/80 px-1">
+                <span>Accuracy: <strong className="text-white">{individualResults?.percentage ?? 0}%</strong></span>
+                <span>Total Questions: <strong className="text-white">{totalQuestions}</strong></span>
+              </div>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 p-1 rounded-xl bg-[#1c1209] border border-amber-900/60 text-xs font-mono">
+              <button
+                onClick={() => setResultsFilter("all")}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer ${
+                  resultsFilter === "all"
+                    ? "bg-amber-950 text-yellow-300 font-bold border border-amber-600/80 shadow-sm"
+                    : "text-amber-400/70 hover:text-white"
+                }`}
+              >
+                All ({individualResults?.questions.length ?? totalQuestions})
+              </button>
+              <button
+                onClick={() => setResultsFilter("correct")}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer ${
+                  resultsFilter === "correct"
+                    ? "bg-emerald-950 text-emerald-300 font-bold border border-emerald-600/80 shadow-sm"
+                    : "text-amber-400/70 hover:text-white"
+                }`}
+              >
+                ✓ Correct ({individualResults?.correct_count ?? 0})
+              </button>
+              <button
+                onClick={() => setResultsFilter("wrong")}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-center transition-all cursor-pointer ${
+                  resultsFilter === "wrong"
+                    ? "bg-red-950 text-red-300 font-bold border border-red-600/80 shadow-sm"
+                    : "text-amber-400/70 hover:text-white"
+                }`}
+              >
+                ✗ Wrong ({individualResults?.wrong_count ?? 0})
+              </button>
+            </div>
+
+            {/* Questions Detailed Review List */}
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+              {isLoadingResults ? (
+                <div className="p-8 text-center font-mono text-xs text-amber-400/70 flex items-center justify-center gap-2">
+                  <Clock className="h-4 w-4 animate-spin" /> Loading complete question breakdown...
+                </div>
               ) : (
-                <span className="flex items-center gap-2">
-                  <Send className="h-4 w-4" /> SUBMIT ANSWER
-                </span>
+                (individualResults?.questions || [])
+                  .filter((q) => {
+                    if (resultsFilter === "correct") return q.is_correct;
+                    if (resultsFilter === "wrong") return !q.is_correct;
+                    return true;
+                  })
+                  .map((q) => {
+                    const options = [
+                      { key: "A", text: q.option_a },
+                      { key: "B", text: q.option_b },
+                      { key: "C", text: q.option_c },
+                      { key: "D", text: q.option_d },
+                    ];
+
+                    return (
+                      <div
+                        key={q.question_number}
+                        className={`crab-card rounded-2xl p-4 border text-left space-y-3 transition-all ${
+                          q.is_correct
+                            ? "border-emerald-700/60 bg-[#121c14]/90"
+                            : "border-red-800/60 bg-[#1c1212]/90"
+                        }`}
+                      >
+                        {/* Header: Q# & Verdict */}
+                        <div className="flex items-center justify-between border-b border-amber-900/40 pb-2 text-xs font-mono">
+                          <span className="font-bold text-amber-300">
+                            Q{q.question_number}. Question {q.question_number}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase flex items-center gap-1 ${
+                              q.is_correct
+                                ? "bg-emerald-950 text-emerald-300 border border-emerald-600"
+                                : "bg-red-950 text-red-300 border border-red-600"
+                            }`}
+                          >
+                            {q.is_correct ? (
+                              <>
+                                <Check className="h-3 w-3" /> Correct (+1)
+                              </>
+                            ) : (
+                              <>
+                                <X className="h-3 w-3" /> Wrong (0)
+                              </>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* Question Text */}
+                        <p className="text-sm font-semibold text-white leading-relaxed">
+                          {q.question_text}
+                        </p>
+
+                        {/* 4 Options breakdown */}
+                        <div className="space-y-1.5 pt-1">
+                          {options.map((opt) => {
+                            const isUserChoice = q.selected_option === opt.key;
+                            const isOfficialAnswer = q.correct_option === opt.key;
+
+                            let optStyle = "border-amber-900/40 bg-[#170e07]/60 text-amber-200/70";
+                            let badge = null;
+
+                            if (isUserChoice && q.is_correct) {
+                              optStyle = "border-emerald-500 bg-emerald-950/70 text-emerald-200 font-bold";
+                              badge = (
+                                <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1">
+                                  <Check className="h-3 w-3" /> Your Answer (Correct)
+                                </span>
+                              );
+                            } else if (isUserChoice && !q.is_correct) {
+                              optStyle = "border-red-500 bg-red-950/70 text-red-200";
+                              badge = (
+                                <span className="text-[10px] text-red-400 font-mono flex items-center gap-1">
+                                  <X className="h-3 w-3" /> Your Answer (Wrong)
+                                </span>
+                              );
+                            } else if (isOfficialAnswer && !q.is_correct) {
+                              optStyle = "border-yellow-500 bg-amber-950/80 text-yellow-200 font-bold";
+                              badge = (
+                                <span className="text-[10px] text-yellow-400 font-mono font-bold">
+                                  ★ Correct Answer
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <div
+                                key={opt.key}
+                                className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${optStyle}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="h-5 w-5 rounded font-mono text-[10px] font-bold flex items-center justify-center border border-amber-800 bg-[#1c1209]">
+                                    {opt.key}
+                                  </span>
+                                  <span>{opt.text}</span>
+                                </div>
+                                {badge}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Scientific Explanation */}
+                        {q.explanation && (
+                          <div className="mt-2 p-2.5 rounded-xl bg-[#1c1209] border border-amber-800/60 text-[11px] font-sans text-amber-200/90 leading-relaxed">
+                            <span className="font-bold text-yellow-400 font-mono uppercase text-[10px] block mb-0.5">
+                              💡 Aquaculture Analysis:
+                            </span>
+                            {q.explanation}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
               )}
-            </button>
-          </div>
-        )}
-
-        {/* ================= STAGE 4: ALL QUESTIONS COMPLETED ================= */}
-        {flowState === "COMPLETED" && (
-          <div className="crab-card rounded-2xl p-6 border-amber-700/60 shadow-xl text-center flex flex-col items-center animate-in zoom-in duration-300">
-            <div className="h-20 w-20 rounded-2xl bg-emerald-950 border border-emerald-500/50 flex items-center justify-center text-emerald-400 mb-4 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-              <CheckCircle className="h-10 w-10 text-emerald-400" />
             </div>
 
-            <div className="inline-block px-3 py-1 rounded-full bg-emerald-950 border border-emerald-600/50 text-emerald-300 font-mono text-[11px] font-bold uppercase tracking-widest mb-3">
-              ALL {totalQuestions} QUESTIONS COMPLETED
+            {/* Actions: Reconnect or New Round */}
+            <div className="pt-2">
+              <button
+                onClick={handleResetForNewSession}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-yellow-400 font-bold text-slate-950 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-95 transition-all"
+              >
+                <RotateCcw className="h-4 w-4" /> Ready for Next Round / Session
+              </button>
             </div>
-
-            <h2 className="text-2xl font-black text-white tracking-tight">
-              Great Job, {participantName}!
-            </h2>
-
-            <p className="text-xs text-amber-200/70 max-w-xs mt-2 leading-relaxed">
-              You have completed all {totalQuestions} questions. Your responses and finish timestamps are securely locked into the tournament database.
-            </p>
-
-            <div className="w-full my-6 p-4 rounded-xl bg-[#1c1209] border border-amber-900/60 text-left space-y-2 text-xs font-mono">
-              <div className="flex justify-between items-center">
-                <span className="text-amber-400/70">Competitor</span>
-                <span className="text-white font-bold">{participantName}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-amber-400/70">Questions Answered</span>
-                <span className="text-emerald-400 font-bold">{totalQuestions} / {totalQuestions} Complete</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-amber-400/70">Score Achieved</span>
-                <span className="text-yellow-400 font-bold">{finalScore !== null ? `${finalScore} / ${totalQuestions}` : "Recorded"}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs font-mono text-amber-300/80">
-              <Clock className="h-4 w-4 text-amber-400 animate-spin" />
-              Waiting for remaining participants to finish before revealing final standings...
-            </div>
-          </div>
-        )}
-
-        {/* ================= STAGE 5: FINAL RESULTS ================= */}
-        {flowState === "RESULTS" && (
-          <div className="crab-card rounded-2xl p-6 border-amber-500 shadow-2xl text-center flex flex-col items-center animate-in zoom-in duration-300">
-            <div className="h-20 w-20 rounded-2xl bg-gradient-to-tr from-amber-600 to-yellow-400 border border-yellow-200 flex items-center justify-center text-slate-950 mb-4 shadow-[0_0_35px_rgba(245,158,11,0.5)] animate-bounce">
-              <Trophy className="h-10 w-10 text-slate-950" />
-            </div>
-
-            <div className="inline-block px-3 py-1 rounded-full bg-amber-950 border border-amber-600 text-amber-300 font-mono text-[11px] font-bold uppercase tracking-widest mb-3">
-              OFFICIAL TOURNAMENT RESULTS
-            </div>
-
-            <h2 className="text-2xl font-black text-white tracking-tight">
-              {finalRank === 1
-                ? "👑 1ST PLACE CHAMPION!"
-                : finalRank === 2
-                ? "🥈 2ND PLACE SILVER!"
-                : finalRank === 3
-                ? "🥉 3RD PLACE BRONZE!"
-                : "WELL PLAYED!"}
-            </h2>
-
-            <div className="my-6 p-5 rounded-2xl bg-[#1c1209] border border-amber-900/60 w-full space-y-4">
-              <div>
-                <div className="text-[11px] font-mono text-amber-400/70 uppercase">Your Final Score</div>
-                <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-400 font-mono">
-                  {finalScore !== null ? `${finalScore} / ${totalQuestions}` : "—"}
-                </div>
-              </div>
-
-              {finalRank && (
-                <div className="border-t border-amber-900/60 pt-3">
-                  <div className="text-[11px] font-mono text-amber-400/70 uppercase">Official Standing</div>
-                  <div className="text-2xl font-black text-white font-mono">
-                    Rank #{finalRank}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={handleResetForNewSession}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 hover:from-amber-500 hover:to-yellow-400 font-bold text-slate-950 text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-lg"
-            >
-              <RotateCcw className="h-4 w-4" /> Ready for Next Round / Session
-            </button>
           </div>
         )}
       </main>

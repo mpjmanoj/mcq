@@ -270,6 +270,74 @@ def get_participant_status(participant_id: str, db: Session = Depends(get_db)):
         "quiz_status": session.status,
     }
 
+@app.get("/api/participants/{participant_id}/answers")
+def get_participant_answers(participant_id: str, db: Session = Depends(get_db)):
+    answers = db.query(Answer).filter(Answer.participant_id == participant_id).all()
+    ans_map = {}
+    for a in answers:
+        if a.question:
+            ans_map[a.question.question_number] = a.selected_option
+    return {"answers": ans_map}
+
+@app.get("/api/participants/{participant_id}/results")
+def get_participant_results(participant_id: str, db: Session = Depends(get_db)):
+    session = get_or_create_active_session(db)
+    participant = db.query(Participant).filter(Participant.id == participant_id).first()
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found.")
+
+    answers = db.query(Answer).filter(Answer.participant_id == participant.id).all()
+    ans_map = {a.question.question_number: a for a in answers if a.question}
+
+    questions = db.query(Question).filter(Question.session_id == session.id).order_by(asc(Question.question_number)).all()
+    if not questions:
+        questions = db.query(Question).order_by(asc(Question.question_number)).all()
+
+    breakdown = []
+    correct_count = 0
+    wrong_count = 0
+
+    for q in questions:
+        ans = ans_map.get(q.question_number)
+        selected = ans.selected_option if ans else None
+        is_correct = ans.is_correct if ans else False
+
+        if selected is not None:
+            if is_correct:
+                correct_count += 1
+            else:
+                wrong_count += 1
+
+        breakdown.append({
+            "question_number": q.question_number,
+            "question_text": q.question_text,
+            "option_a": q.option_a,
+            "option_b": q.option_b,
+            "option_c": q.option_c,
+            "option_d": q.option_d,
+            "selected_option": selected,
+            "correct_option": q.correct_option.strip().upper(),
+            "is_correct": is_correct,
+            "explanation": q.explanation or "",
+        })
+
+    total_q = session.total_questions or len(breakdown) or 1
+    pct = round((correct_count / total_q) * 100, 1)
+
+    return {
+        "participant_id": participant.id,
+        "name": participant.name,
+        "mobile": mask_mobile(participant.mobile_number),
+        "status": participant.status,
+        "score": participant.score,
+        "total_questions": total_q,
+        "correct_count": correct_count,
+        "wrong_count": wrong_count,
+        "percentage": pct,
+        "formatted_time": format_time_seconds(participant.total_time_seconds),
+        "questions": breakdown,
+    }
+
 @app.delete("/api/participants/{participant_id}")
 async def remove_participant(participant_id: str, db: Session = Depends(get_db)):
     session = get_or_create_active_session(db)
@@ -362,28 +430,6 @@ async def submit_answer(req: AnswerRequest, db: Session = Depends(get_db)):
     if not question:
         raise HTTPException(status_code=404, detail="Question not found.")
 
-    # Prevent duplicate submissions for the same question
-    existing_answer = (
-        db.query(Answer)
-        .filter(Answer.participant_id == participant.id, Answer.question_id == question.id)
-        .first()
-    )
-    if existing_answer:
-        return {
-            "status": "already_submitted",
-            "message": "Answer already submitted for this question.",
-            "next_question": min(participant.questions_answered + 1, session.total_questions),
-            "completed": participant.status == "COMPLETED",
-        }
-
-    # Strict sequential flow check: question_number must match next expected question
-    expected_q = participant.questions_answered + 1
-    if req.question_number != expected_q:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid question sequence. Expected question {expected_q}, received {req.question_number}."
-        )
-
     now = utc_now()
     selected = req.selected_option.strip().upper()
     is_correct = (selected == question.correct_option.strip().upper())
@@ -393,20 +439,43 @@ async def submit_answer(req: AnswerRequest, db: Session = Depends(get_db)):
     if session.started_at:
         elapsed_total = (now - session.started_at.replace(tzinfo=timezone.utc)).total_seconds()
 
-    # Create answer record
-    ans = Answer(
-        participant_id=participant.id,
-        question_id=question.id,
-        selected_option=selected,
-        is_correct=is_correct,
-        response_time=max(0.0, elapsed_total),
-        answered_at=now,
+    # Check if participant already answered this question (support back navigation and updates)
+    existing_answer = (
+        db.query(Answer)
+        .filter(Answer.participant_id == participant.id, Answer.question_id == question.id)
+        .first()
     )
-    db.add(ans)
 
-    if is_correct:
-        participant.score += 1
-    participant.questions_answered += 1
+    if existing_answer:
+        if existing_answer.is_correct and not is_correct:
+            participant.score = max(0, participant.score - 1)
+        elif not existing_answer.is_correct and is_correct:
+            participant.score += 1
+        existing_answer.selected_option = selected
+        existing_answer.is_correct = is_correct
+        existing_answer.response_time = max(0.0, elapsed_total)
+        existing_answer.answered_at = now
+    else:
+        ans = Answer(
+            participant_id=participant.id,
+            question_id=question.id,
+            selected_option=selected,
+            is_correct=is_correct,
+            response_time=max(0.0, elapsed_total),
+            answered_at=now,
+        )
+        db.add(ans)
+        if is_correct:
+            participant.score += 1
+
+    # Recalculate unique questions answered count
+    unique_answered = (
+        db.query(Answer.question_id)
+        .filter(Answer.participant_id == participant.id)
+        .distinct()
+        .count()
+    )
+    participant.questions_answered = unique_answered
 
     # Check if participant completed all questions
     is_completed = False
@@ -416,7 +485,6 @@ async def submit_answer(req: AnswerRequest, db: Session = Depends(get_db)):
         participant.total_time_seconds = max(0.0, elapsed_total)
         is_completed = True
     else:
-        # Keep cumulative time tracked
         participant.total_time_seconds = max(0.0, elapsed_total)
 
     db.commit()
@@ -464,11 +532,11 @@ async def submit_answer(req: AnswerRequest, db: Session = Depends(get_db)):
                 },
             )
 
-    next_q = participant.questions_answered + 1
+    next_q = req.question_number + 1 if req.question_number < session.total_questions else None
     return {
         "status": "success",
         "question_number": req.question_number,
-        "next_question": next_q if next_q <= session.total_questions else None,
+        "next_question": next_q,
         "completed": is_completed,
         "score": participant.score,
     }
