@@ -26,6 +26,7 @@ import {
   Medal,
   Award,
   Zap,
+  Gamepad2,
 } from "lucide-react";
 import { getApiBaseUrl, getWsUrl } from "@/lib/api";
 import { sounds } from "@/lib/sound";
@@ -92,6 +93,7 @@ export default function AdminPage() {
   // Connection & Audio
   const [wsConnected, setWsConnected] = useState<boolean>(false);
   const [soundActive, setSoundActive] = useState<boolean>(true);
+  const [retroActive, setRetroActive] = useState<boolean>(false);
   const wsRef = useRef<WebSocket | null>(null);
 
   // Set Join URL dynamically based on browser origin
@@ -101,6 +103,29 @@ export default function AdminPage() {
       setJoinUrl(`${origin}/join`);
       setSoundActive(sounds.isSoundEnabled());
     }
+  }, []);
+
+  // Retro Audio auto-trigger when quiz transitions to LIVE
+  useEffect(() => {
+    if (status === "LIVE" && soundActive) {
+      if (!sounds.isRetroThemePlaying()) {
+        sounds.startRetroTheme();
+        setRetroActive(true);
+      }
+    } else if (status === "COMPLETED" || status === "WAITING") {
+      if (sounds.isRetroThemePlaying()) {
+        sounds.stopRetroTheme();
+        setRetroActive(false);
+      }
+    }
+  }, [status, soundActive]);
+
+  // Sync retro active status
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRetroActive(sounds.isRetroThemePlaying());
+    }, 400);
+    return () => clearInterval(timer);
   }, []);
 
   const triggerConfetti = useCallback(() => {
@@ -173,17 +198,22 @@ export default function AdminPage() {
               sounds.playJoin();
             } else if (msg.event === "quiz_started") {
               setStatus("LIVE");
-              sounds.playCountdown(true);
+              sounds.startRetroTheme();
+              setRetroActive(true);
               fetchSessionData();
             } else if (msg.event === "leaderboard_updated") {
               setLeaderboard(msg.data.leaderboard || []);
             } else if (msg.event === "quiz_completed") {
               setStatus("COMPLETED");
+              sounds.stopRetroTheme();
+              setRetroActive(false);
               setLeaderboard(msg.data.leaderboard || []);
               triggerConfetti();
               sounds.playVictory();
             } else if (msg.event === "quiz_reset") {
               setStatus("WAITING");
+              sounds.stopRetroTheme();
+              setRetroActive(false);
               fetchSessionData();
             }
           } catch {}
@@ -209,12 +239,17 @@ export default function AdminPage() {
       active = false;
       if (wsRef.current) wsRef.current.close();
       clearInterval(interval);
+      sounds.stopRetroTheme();
     };
   }, [fetchSessionData, fetchQuestions, triggerConfetti]);
 
   // Actions
   const handleStartQuiz = async () => {
     setShowStartModal(false);
+    if (soundActive) {
+      sounds.startRetroTheme();
+      setRetroActive(true);
+    }
     try {
       const api = getApiBaseUrl();
       const res = await fetch(`${api}/api/quiz/start`, { method: "POST" });
@@ -227,6 +262,8 @@ export default function AdminPage() {
 
   const handleEndQuiz = async () => {
     setShowEndModal(false);
+    sounds.stopRetroTheme();
+    setRetroActive(false);
     try {
       const api = getApiBaseUrl();
       const res = await fetch(`${api}/api/quiz/end`, { method: "POST" });
@@ -241,6 +278,8 @@ export default function AdminPage() {
 
   const handleResetQuiz = async () => {
     setShowResetModal(false);
+    sounds.stopRetroTheme();
+    setRetroActive(false);
     try {
       const api = getApiBaseUrl();
       const res = await fetch(`${api}/api/quiz/reset`, { method: "POST" });
@@ -272,6 +311,12 @@ export default function AdminPage() {
   const toggleSound = () => {
     const next = sounds.toggleSound();
     setSoundActive(next);
+    setRetroActive(sounds.isRetroThemePlaying());
+  };
+
+  const toggleRetroAudio = () => {
+    const next = sounds.toggleRetroTheme();
+    setRetroActive(next);
   };
 
   const top1 = leaderboard[0];
@@ -386,10 +431,24 @@ export default function AdminPage() {
             </button>
           )}
 
+          {/* Retro Audio Toggle */}
+          <button
+            onClick={toggleRetroAudio}
+            className={`py-1.5 px-3 rounded-xl border text-xs font-mono flex items-center gap-2 cursor-pointer transition-all ${
+              retroActive
+                ? "bg-amber-950 border-amber-500 text-yellow-300 shadow-[0_0_15px_rgba(245,158,11,0.4)] animate-pulse font-bold"
+                : "border-amber-900/60 bg-[#1e140a] text-amber-400/70 hover:text-amber-200"
+            }`}
+            title={retroActive ? "Mute Retro Audio" : "Play Retro Audio"}
+          >
+            <Gamepad2 className="h-4 w-4 text-amber-400" />
+            <span>RETRO AUDIO: {retroActive ? "ON ♫" : "OFF"}</span>
+          </button>
+
           {/* Sound Toggle */}
           <button
             onClick={toggleSound}
-            className="p-2.5 rounded-xl border border-amber-900/60 bg-[#1e140a] text-amber-300 hover:text-amber-100"
+            className="p-2.5 rounded-xl border border-amber-900/60 bg-[#1e140a] text-amber-300 hover:text-amber-100 cursor-pointer"
             title={soundActive ? "Mute Sound" : "Unmute Sound"}
           >
             {soundActive ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-amber-600" />}
