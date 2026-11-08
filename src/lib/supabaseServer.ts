@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { INITIAL_QUESTIONS } from "./questions";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://wvufalstpgdxnhjpqajv.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_fjd7cqMG15FK6RFnN_u3Hw_fpdgvCXe";
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://vlzbvwflczbzwppvywts.supabase.co";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsemJ2d2ZsY3piendwcHZ5d3RzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMTEyODAsImV4cCI6MjEwOTY4NzI4MH0.m22e-yHQM21Fq8oiJVCLtkiUs8K1WfjLLQ7CC_ME6a8";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let cachedClient: any = null;
